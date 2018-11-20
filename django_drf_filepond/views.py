@@ -1,15 +1,14 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-#from django.shortcuts import render
 import logging
 import shortuuid
 
 from django.core.files.uploadedfile import UploadedFile
-from django.conf import settings as master_settings
+from django.conf import settings
 
-from filepond_django_drf import settings
-from filepond_django_drf.models import TemporaryUpload
+import django_drf_filepond.drf_filepond_settings as filepond_settings
+from django_drf_filepond.models import TemporaryUpload
 
 from io import BytesIO
 
@@ -18,8 +17,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser
 from rest_framework.exceptions import ParseError, NotFound
-from filepond_django_drf.parsers import PlainTextParser
-from filepond_django_drf.renderers import PlainTextRenderer
+from django_drf_filepond.parsers import PlainTextParser
+from django_drf_filepond.renderers import PlainTextRenderer
 import requests
 from requests.exceptions import ConnectionError
 from django.core.validators import URLValidator
@@ -55,10 +54,10 @@ class ProcessView(APIView):
         # TODO: Check whether this is necessary - maybe add a security 
         # parameter that can be disabled to turn off this check if the 
         # developer wishes?
-        if ((not hasattr(settings, 'FILEPOND_UPLOAD_TMP')) or 
-            (not (settings.FILEPOND_UPLOAD_TMP).startswith(
-                master_settings.BASE_DIR))):
-            return Response('FILEPOND_UPLOAD_TMP is not set.', 
+        if ((not hasattr(filepond_settings, 'UPLOAD_TMP')) or 
+            (not (filepond_settings.UPLOAD_TMP).startswith(
+                settings.BASE_DIR))):
+            return Response('UPLOAD_TMP is not set.', 
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
         # Check that we've received a file and then generate a unique ID

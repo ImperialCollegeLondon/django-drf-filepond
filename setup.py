@@ -23,7 +23,9 @@ setup(
     ],
     include_package_data=True,
     install_requires=[
-        "Django>=1.8.0",
+        "Django>=1.11.0",
+        "djangorestframework>=3.8.2",
+        "shortuuid>=0.5.0"
     ],
     tests_require=[
         "nose",
