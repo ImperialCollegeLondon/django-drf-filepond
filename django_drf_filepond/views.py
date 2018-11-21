@@ -2,13 +2,12 @@
 from __future__ import unicode_literals
 
 import logging
+import os
 import shortuuid
 
 from django.core.files.uploadedfile import UploadedFile
 from django.conf import settings
-
-import django_drf_filepond.drf_filepond_settings as filepond_settings
-from django_drf_filepond.models import TemporaryUpload
+from django_drf_filepond.models import TemporaryUpload, storage
 
 from io import BytesIO
 
@@ -54,10 +53,10 @@ class ProcessView(APIView):
         # TODO: Check whether this is necessary - maybe add a security 
         # parameter that can be disabled to turn off this check if the 
         # developer wishes?
-        if ((not hasattr(filepond_settings, 'UPLOAD_TMP')) or 
-            (not (filepond_settings.UPLOAD_TMP).startswith(
-                settings.BASE_DIR))):
-            return Response('UPLOAD_TMP is not set.', 
+        if ((not hasattr(settings, 'DJANGO_DRF_FILEPOND_UPLOAD_TMP')) or 
+            (not (storage.location).startswith(settings.BASE_DIR))):
+            return Response('The file upload path settings are not '
+                            'configured correctly.', 
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
         # Check that we've received a file and then generate a unique ID
@@ -77,6 +76,15 @@ class ProcessView(APIView):
         # type.
         if not isinstance(file_obj, UploadedFile):
             raise ParseError('Invalid data type has been parsed.')
+        
+        # Before we attempt to save the file, make sure that the upload  
+        # directory we're going to save to exists.
+        # *** It's not necessary to explicitly create the directory since
+        # *** the FileSystemStorage object creates the directory on save
+        #if not os.path.exists(storage.location):
+        #    LOG.debug('Filepond app: Creating file upload directory '
+        #             '<%s>...' % storage.location)
+        #    os.makedirs(storage.location, mode=0o700)
         
         # We now need to create the temporary upload object and store the 
         # file and metadata.

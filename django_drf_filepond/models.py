@@ -2,14 +2,16 @@
 from __future__ import unicode_literals
 
 import os
+from django.conf import settings
 from django.db import models
-from django.core.files.storage import FileSystemStorage
 from django.core.validators import MinLengthValidator
-import django_drf_filepond.drf_filepond_settings as settings
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
+from django.core.files.storage import FileSystemStorage
 
-storage = FileSystemStorage(location=settings.UPLOAD_TMP)
+storage = FileSystemStorage(
+    location=getattr(settings, 'DJANGO_DRF_FILEPOND_UPLOAD_TMP',
+                     os.path.join(settings.BASE_DIR,'filepond_uploads')))
 
 class TemporaryUpload(models.Model):
     

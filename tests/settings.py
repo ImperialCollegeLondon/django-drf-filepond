@@ -15,12 +15,11 @@ import os
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/2.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = '$t3x-p+dy6h@+d136bmfsd0wk=jer9l+s$_dw)0!_%-ytqm2a@'
+SECRET_KEY = '<Enter a secret key here> Used for running tests only.'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
