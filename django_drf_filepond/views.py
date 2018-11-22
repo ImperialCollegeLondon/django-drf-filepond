@@ -53,7 +53,7 @@ class ProcessView(APIView):
         # TODO: Check whether this is necessary - maybe add a security 
         # parameter that can be disabled to turn off this check if the 
         # developer wishes?
-        if ((not hasattr(settings, 'DJANGO_DRF_FILEPOND_UPLOAD_TMP')) or 
+        if ((not hasattr(settings, 'DJANGO_DRF_FILEPOND_UPLOAD_TMP')) and 
             (not (storage.location).startswith(settings.BASE_DIR))):
             return Response('The file upload path settings are not '
                             'configured correctly.', 

@@ -5,7 +5,7 @@ provided at:
 https://pqina.nl/filepond/docs/patterns/api/server/#configuration
 """
 from django.conf.urls import url
-from filepond_django_drf.views import ProcessView, RevertView, LoadView,\
+from django_drf_filepond.views import ProcessView, RevertView, LoadView,\
      RestoreView, FetchView
 
 urlpatterns = [
