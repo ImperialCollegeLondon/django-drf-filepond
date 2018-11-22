@@ -20,6 +20,7 @@ setup(
     license="BSD 3-Clause",
     packages=[
         "django_drf_filepond",
+        "django_drf_filepond.migrations",
     ],
     include_package_data=True,
     install_requires=[
