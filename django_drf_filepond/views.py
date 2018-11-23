@@ -111,6 +111,11 @@ class RevertView(APIView):
         LOG.debug('Filepond API: Revert view DELETE called...')
         file_id = (request.data).strip()
         
+        # If we've received the incoming data as bytes, we need to decode 
+        # it to a string
+        if type(file_id) == type(b''):
+            file_id = file_id.decode('utf-8')
+        
         if len(file_id) != 22:
             raise ParseError('The provided data is invalid.')
         

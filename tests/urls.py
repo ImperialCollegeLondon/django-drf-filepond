@@ -15,9 +15,10 @@ Including another URLconf
 """
 #from django.contrib import admin
 from django.conf.urls import url
-from django_drf_filepond.views import ProcessView
+from django_drf_filepond.views import ProcessView, RevertView
 
 urlpatterns = [
     #path('admin/', admin.site.urls),
-    url(r'^process/$', view=ProcessView.as_view(), name='django_drf_filepond_process')
+    url(r'^process/$', view=ProcessView.as_view(), name='django_drf_filepond_process'),
+    url(r'^revert/$', view=RevertView.as_view(), name='django_drf_filepond_revert')
 ]
