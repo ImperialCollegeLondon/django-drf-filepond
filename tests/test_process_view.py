@@ -9,6 +9,8 @@ from django.test.client import encode_multipart, RequestFactory
 import uuid
 from django.core.files.storage import FileSystemStorage
 import django_drf_filepond.views as views
+from django.core.files.base import ContentFile
+from django_drf_filepond import drf_filepond_settings
 
 LOG = logging.getLogger(__name__)
 logging.basicConfig()
@@ -23,16 +25,39 @@ class ProcessTestCase(TestCase):
         self.test_data = data
     
     def test_process_data(self):
+        tmp_upload_dir = drf_filepond_settings.UPLOAD_TMP
+        self.uploaddir_exists_pre_test = os.path.exists(tmp_upload_dir)
         (encoded_form, content_type) = self._get_encoded_form('testfile.dat')
         
         response = self.client.post(reverse('django_drf_filepond_process'),
                                 data=encoded_form, content_type=content_type)
-        LOG.debug(response)
+        #LOG.debug(response)
+        # If the directory for temp file upload didn't exist when we started
+        # the test then it's just been created so we can remove it and its
+        # contents. 
+        if not self.uploaddir_exists_pre_test:
+            if hasattr(response, 'data'):
+                filepath = os.path.join(tmp_upload_dir, response.data)
+                if os.path.exists(filepath):
+                    LOG.debug('Removing generated file <%s>' % filepath)
+                    os.remove(filepath)
+            LOG.debug('Removing created directory <%s>' % tmp_upload_dir)
+            os.removedirs(tmp_upload_dir)
+
         self.assertEqual(response.status_code, 200, 
                          'Response received status code <%s> instead of 200.'
                          % (response.status_code))
         
         data = response.data
+        # If the temp upload directory did exist at the start of the test, 
+        # it will still be present now so we can just remove the created 
+        # temporary upload file from it.
+        upload_file_path = os.path.join(tmp_upload_dir, data)
+        if os.path.exists(upload_file_path):
+            LOG.debug('Removing generated file <%s> - directory was already '
+                      'present so leaving in place' % upload_file_path)
+            os.remove(upload_file_path)
+        
         self.assertEqual(len(data), 22, 
                          'Response data is not of the correct length.')
     
@@ -68,7 +93,25 @@ class ProcessTestCase(TestCase):
                       'Error detail missing in response.')
         self.assertIn(response.data['detail'], ('Invalid request data has '
                     'been provided.'))
+    
+    def test_upload_non_file_data(self):
+        cf = ContentFile(self.test_data.read(), name='test.txt')
+        upload_form = {'filepond': cf}
+        enc_form = encode_multipart('abc', upload_form)
+        rf = RequestFactory()
+        req = rf.post(reverse('django_drf_filepond_process'), data=enc_form,
+                      content_type='multipart/form-data; boundary=abc')
+        req.FILES['filepond'] = cf
+        pv = views.ProcessView.as_view()
+        response = pv(req)
+        self.assertEqual(response.status_code, 400, 'Expecting 400 error due'
+                         ' to non-file data being provided.')
+        self.assertTrue('detail' in response.data, 
+                      'Error detail missing in response.')
+        self.assertIn(response.data['detail'], ('Invalid data type has been '
+                        'parsed.'))
         
+    
     def _get_encoded_form(self, filename):
         f = SimpleUploadedFile(filename, self.test_data.read())
         upload_form = {'filepond':f}

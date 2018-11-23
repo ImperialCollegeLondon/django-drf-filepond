@@ -9,9 +9,9 @@ from django.db.models.signals import post_delete
 from django.dispatch import receiver
 from django.core.files.storage import FileSystemStorage
 
-storage = FileSystemStorage(
-    location=getattr(settings, 'DJANGO_DRF_FILEPOND_UPLOAD_TMP',
-                     os.path.join(settings.BASE_DIR,'filepond_uploads')))
+FILEPOND_UPLOAD_TMP = getattr(settings, 'DJANGO_DRF_FILEPOND_UPLOAD_TMP',
+                        os.path.join(settings.BASE_DIR,'filepond_uploads'))
+storage = FileSystemStorage(location=FILEPOND_UPLOAD_TMP)
 
 class TemporaryUpload(models.Model):
     
