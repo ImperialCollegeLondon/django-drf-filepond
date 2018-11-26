@@ -22,6 +22,7 @@ import requests
 from requests.exceptions import ConnectionError
 from django.core.validators import URLValidator
 from django.core.exceptions import ValidationError
+import json
 
 LOG = logging.getLogger(__name__)
 logging.basicConfig()
@@ -106,15 +107,17 @@ class RevertView(APIView):
     pressed and we remove the previously uploaded temporary file.
     '''
     def delete(self, request):
+        # If we've received the incoming data as bytes, we need to decode 
+        # it to a string
+        if type(request.data) == type(b''):
+            request_data = request.data.decode('utf-8')
+        else:
+            request_data = request.data
+        
         # Expecting a 22-character unique ID telling us which temporary 
         # upload to remove.
         LOG.debug('Filepond API: Revert view DELETE called...')
-        file_id = (request.data).strip()
-        
-        # If we've received the incoming data as bytes, we need to decode 
-        # it to a string
-        if type(file_id) == type(b''):
-            file_id = file_id.decode('utf-8')
+        file_id = request_data.strip()
         
         if len(file_id) != 22:
             raise ParseError('The provided data is invalid.')
