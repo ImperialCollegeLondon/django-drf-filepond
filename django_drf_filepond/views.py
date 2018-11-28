@@ -161,8 +161,8 @@ class FetchView(APIView):
             raise ParseError('Required query parameter(s) missing.')
         
         # Use Django's URL validator to see if we've been given a valid URL
-        validator = URLValidator(msg="An invalid URL <%s> has been provided"
-                                 % (target_url))
+        validator = URLValidator(message=('An invalid URL <%s> has been '
+                                          'provided' % (target_url)))
         try:
             validator(target_url)
         except ValidationError as e:
@@ -208,6 +208,9 @@ class FetchView(APIView):
                            % str(e))
         
         #content_length = buf.tell()
+        # Generate a default filename and then if we can extract the 
+        # filename from the URL, replace the default name with the one from 
+        # the URL. 
         file_id = _get_file_id()
         upload_file_name = file_id
         if not target_url.endswith('/'):

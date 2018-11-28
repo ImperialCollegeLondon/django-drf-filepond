@@ -31,6 +31,7 @@ setup(
     tests_require=[
         "nose",
         "coverage",
+        "httpretty",
     ],
     zip_safe=False,
     test_suite="tests.runner.start",

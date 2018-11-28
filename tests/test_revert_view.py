@@ -43,7 +43,8 @@ class RevertTestCase(TestCase):
         # The file deletion signal doesn't seem to be called when running
         # tests whereas it is called when running the app behind a regular 
         # server. For now, deleting the file manually here.
-        os.remove(file_path)
+        # *** The signal handler DOES now seem to be working as expected...
+        # os.remove(file_path)
         
         # Check that the file was removed
         self.assertFalse(os.path.exists(file_path), 

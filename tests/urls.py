@@ -15,10 +15,11 @@ Including another URLconf
 """
 #from django.contrib import admin
 from django.conf.urls import url
-from django_drf_filepond.views import ProcessView, RevertView
+from django_drf_filepond.views import ProcessView, RevertView, FetchView
 
 urlpatterns = [
     #path('admin/', admin.site.urls),
     url(r'^process/$', view=ProcessView.as_view(), name='django_drf_filepond_process'),
-    url(r'^revert/$', view=RevertView.as_view(), name='django_drf_filepond_revert')
+    url(r'^revert/$', view=RevertView.as_view(), name='django_drf_filepond_revert'),
+    url(r'^fetch/$', view=FetchView.as_view(), name='django_drf_filepond_fetch')
 ]
