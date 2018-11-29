@@ -1,14 +1,60 @@
 Installation
 ============
 
-The app can be added to your Django application by adding it to the 
-INSTALLED_APPS in your Django settings. 
+The app can be installed from PyPi::
 
-Some application-specific settings need to be set before you can start 
-using filepond with your backend application:
+	pip install django-drf-filepond
 
-DJANGO_DRF_FILEPOND_UPLOAD_TMP specifies the  
+or add it to your list of dependencies in a *requirements.txt* file.
 
-The app can be added to your 
-existing Django-based back end by including it in 
+Configuration
+=============
 
+There are three key configuration updates to make within your Django 
+application to set up django-drf-filepond:
+
+1. Add the app to INSTALLED_APPS:
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Add 'django-drf-filepond' to ``INSTALLED_APPS`` in your Django settings 
+file (e.g. ``settings.py``)::
+
+	...
+	
+	INSTALLED_APPS = [
+		...,
+		'django-drf-filepond'
+	]
+	
+	...
+
+2. Set the temporary file upload location:
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Set the location where you want django-drf-filepond to store temporary 
+file uploads by adding the ``DJANGO_DRF_FILEPOND_UPLOAD_TMP`` configuration 
+variable to your settings file, e.g.::
+
+	import os
+	...
+	DJANGO_DRF_FILEPOND_UPLOAD_TMP = os.path.join(BASE_DIR, filepond-temp-uploads)
+	...
+
+3. Include the app urls into your main url configuration
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Add the URL mappings for django-drf-filepond to your URL configuration 
+in ``urls.py``::
+
+	from django.conf.urls import url, include
+	
+	urlpatterns = [
+		...
+		url(r'^fp/', include('django_drf_filepond.urls'))
+	]
+
+On the client side, you need to set the endpoints of the ``process``, 
+``revert``, ``fetch``, ``load`` and ``restore`` functions to match the 
+endpoint used in your path statement above. For example if the first 
+parameter to ``url`` is ``^fp/`` then the endpoint for the ``process`` 
+function will be ``/fp/process/``.

@@ -12,10 +12,3 @@ Welcome to django-drf-filepond's documentation!
 
    introduction
    installation
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
