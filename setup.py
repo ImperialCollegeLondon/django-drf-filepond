@@ -1,18 +1,15 @@
 import re
 import os
+from setuptools import setup
 
-try:
-    from setuptools import setup
-except ImportError:
-    from ez_setup import use_setuptools
-    use_setuptools()
-    from setuptools import setup
+with open("README.md", "r") as readme:
+    long_description = readme.read()
 
 setup(
     name="django-drf-filepond",
     version="0.0.1",
     description="Filepond server app for Django REST Framework",
-    long_description="This module provides a server-side interface for the filepond file upload plugin.",
+    long_description=long_description,
     author="Jeremy Cohen",
     author_email="jeremy.cohen@imperial.ac.uk",
     url="https://github.com/ImperialCollegeLondon/django-drf-filepond",
@@ -41,7 +38,7 @@ setup(
         "Environment :: Web Environment",
         "Framework :: Django",
         "Intended Audience :: Developers",
-        #"License :: OSI Approved :: BSD 3-CLause License",
+        "License :: OSI Approved :: BSD License",
         "Programming Language :: Python :: 2",
         "Programming Language :: Python :: 3",
         "Topic :: Software Development :: Libraries :: Python Modules",
