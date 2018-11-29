@@ -35,7 +35,7 @@ class RevertTestCase(TestCase):
         self.assertTrue(os.path.exists(file_path), 
                         'Test file to remove doesn\'t exist.')
         
-        response = self.client.delete(reverse('django_drf_filepond_revert'),
+        response = self.client.delete(reverse('revert'),
                         data=str(self.file_id), content_type='text/plain')
         self.assertEqual(response.status_code, 204, 
                          'Expecting no content response code.')

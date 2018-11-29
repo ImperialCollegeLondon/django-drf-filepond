@@ -15,14 +15,14 @@ logging.getLogger(__name__).setLevel(logging.DEBUG)
 class FetchTestCase(TestCase):      
 
     def test_fetch_incorrect_param(self):
-        response = self.client.get((reverse('django_drf_filepond_fetch') +
+        response = self.client.get((reverse('fetch') +
                                      '?somekey=http://localhost/test'))
         self.assertContains(response,'Required query parameter(s) missing.',
                             status_code=400)
     
     def test_fetch_invalid_url(self):
         test_url = 'htt://localhost23/test'
-        response = self.client.get((reverse('django_drf_filepond_fetch') + 
+        response = self.client.get((reverse('fetch') + 
                                     ('?target=%s' % test_url)))
         self.assertContains(response,('An invalid URL <%s> has been '
                                       'provided' % test_url),
@@ -39,7 +39,7 @@ class FetchTestCase(TestCase):
                      status=200,
                      body=connection_error_callback)
         
-        response = self.client.get((reverse('django_drf_filepond_fetch') + 
+        response = self.client.get((reverse('fetch') + 
                                     ('?target=%s' % test_url)))
         self.assertContains(response,('Unable to access the requested '
                                       'remote file headers:'),
@@ -53,7 +53,7 @@ class FetchTestCase(TestCase):
                      uri=test_url,
                      status=404)
         
-        response = self.client.get((reverse('django_drf_filepond_fetch') + 
+        response = self.client.get((reverse('fetch') + 
                                     ('?target=%s' % test_url)))
         self.assertContains(response,('The remote file was not found.'),
                                       status_code=404)
@@ -70,7 +70,7 @@ class FetchTestCase(TestCase):
                      status=200,
                      body=response_callback)
         
-        response = self.client.get((reverse('django_drf_filepond_fetch') + 
+        response = self.client.get((reverse('fetch') + 
                                     ('?target=%s' % test_url)))
         self.assertContains(response, 'Provided URL links to HTML content.',
                             status_code=400)
@@ -94,7 +94,7 @@ class FetchTestCase(TestCase):
                      status=200,
                      body=response_callback_get)
     
-        response = self.client.get((reverse('django_drf_filepond_fetch') + 
+        response = self.client.get((reverse('fetch') + 
                                     ('?target=%s' % test_url)))
         return response
     

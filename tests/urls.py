@@ -14,12 +14,10 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 #from django.contrib import admin
-from django.conf.urls import url
-from django_drf_filepond.views import ProcessView, RevertView, FetchView
+from django.conf.urls import url, include
+from django.conf import settings
 
 urlpatterns = [
     #path('admin/', admin.site.urls),
-    url(r'^process/$', view=ProcessView.as_view(), name='django_drf_filepond_process'),
-    url(r'^revert/$', view=RevertView.as_view(), name='django_drf_filepond_revert'),
-    url(r'^fetch/$', view=FetchView.as_view(), name='django_drf_filepond_fetch')
+    url(settings.URL_BASE, include('django_drf_filepond.urls'))
 ]

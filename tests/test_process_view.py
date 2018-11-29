@@ -29,7 +29,7 @@ class ProcessTestCase(TestCase):
         self.uploaddir_exists_pre_test = os.path.exists(tmp_upload_dir)
         (encoded_form, content_type) = self._get_encoded_form('testfile.dat')
         
-        response = self.client.post(reverse('django_drf_filepond_process'),
+        response = self.client.post(reverse('process'),
                                 data=encoded_form, content_type=content_type)
         #LOG.debug(response)
         # If the directory for temp file upload didn't exist when we started
@@ -67,7 +67,7 @@ class ProcessTestCase(TestCase):
         (encoded_form, content_type) = self._get_encoded_form('testfile.dat')
         
         rf = RequestFactory()
-        req = rf.post(reverse('django_drf_filepond_process'),
+        req = rf.post(reverse('process'),
                       data=encoded_form, content_type=content_type)
         pv = views.ProcessView.as_view()
         response = pv(req)
@@ -83,7 +83,7 @@ class ProcessTestCase(TestCase):
                                                       self.test_data.read())}
         enc_form = encode_multipart('abc', upload_form)
         rf = RequestFactory()
-        req = rf.post(reverse('django_drf_filepond_process'), data=enc_form,
+        req = rf.post(reverse('process'), data=enc_form,
                       content_type='multipart/form-data; boundary=abc')
         pv = views.ProcessView.as_view()
         response = pv(req)
@@ -99,7 +99,7 @@ class ProcessTestCase(TestCase):
         upload_form = {'filepond': cf}
         enc_form = encode_multipart('abc', upload_form)
         rf = RequestFactory()
-        req = rf.post(reverse('django_drf_filepond_process'), data=enc_form,
+        req = rf.post(reverse('process'), data=enc_form,
                       content_type='multipart/form-data; boundary=abc')
         req.FILES['filepond'] = cf
         pv = views.ProcessView.as_view()
