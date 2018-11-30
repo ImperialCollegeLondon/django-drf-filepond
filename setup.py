@@ -23,7 +23,8 @@ setup(
     install_requires=[
         "Django>=1.11.0",
         "djangorestframework>=3.8.2",
-        "shortuuid>=0.5.0"
+        "shortuuid>=0.5.0",
+        "requests>=2.20.1"
     ],
     tests_require=[
         "nose",

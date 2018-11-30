@@ -23,7 +23,7 @@ file (e.g. ``settings.py``)::
 	
 	INSTALLED_APPS = [
 		...,
-		'django-drf-filepond'
+		'django_drf_filepond'
 	]
 	
 	...

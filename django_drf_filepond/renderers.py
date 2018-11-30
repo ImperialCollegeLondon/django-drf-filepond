@@ -8,6 +8,7 @@ plain text responses sending back the raw text to the client.
 '''
 from rest_framework.renderers import BaseRenderer
 import json
+from collections import OrderedDict
 
 # This plaintext renderer is taken from the example in the 
 # django rest framework docs since this provides exactly what we 
@@ -29,7 +30,7 @@ class PlainTextRenderer(BaseRenderer):
         print('Data is <%s>' % data)
         
         if data:
-            if type(data) == dict:
+            if type(data) in [dict, OrderedDict]:
                 return json.dumps(data)
             else:
                 return data.encode(self.charset)

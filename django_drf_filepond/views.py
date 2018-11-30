@@ -1,28 +1,26 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-import logging
-import os
-import shortuuid
-
-from django.core.files.uploadedfile import UploadedFile
-from django.conf import settings
-from django_drf_filepond.models import TemporaryUpload, storage
-
 from io import BytesIO
+import logging
 
-from rest_framework import status
-from rest_framework.response import Response
-from rest_framework.views import APIView
-from rest_framework.parsers import MultiPartParser
-from rest_framework.exceptions import ParseError, NotFound
-from django_drf_filepond.parsers import PlainTextParser
-from django_drf_filepond.renderers import PlainTextRenderer
+from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.core.files.uploadedfile import UploadedFile
+from django.core.validators import URLValidator
 import requests
 from requests.exceptions import ConnectionError
-from django.core.validators import URLValidator
-from django.core.exceptions import ValidationError
-import json
+from rest_framework import status
+from rest_framework.exceptions import ParseError, NotFound
+from rest_framework.parsers import MultiPartParser
+from rest_framework.response import Response
+from rest_framework.views import APIView
+import shortuuid
+
+from django_drf_filepond.models import TemporaryUpload, storage
+from django_drf_filepond.parsers import PlainTextParser
+from django_drf_filepond.renderers import PlainTextRenderer
+
 
 LOG = logging.getLogger(__name__)
 logging.basicConfig()
@@ -134,17 +132,17 @@ class RevertView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class LoadView(APIView):
-    def get(self, request, format=None):
+    def get(self, request):
         LOG.debug('Filepond API: Load view GET called...')
         raise NotImplementedError('The load function is not yet implemented')
 
 class RestoreView(APIView):
-    def get(self, request, format=None):
+    def get(self, request):
         LOG.debug('Filepond API: Restore view GET called...')
         raise NotImplementedError('The restore function is not yet implemented')
 
 class FetchView(APIView):
-    def get(self, request, format=None):
+    def get(self, request):
         LOG.debug('Filepond API: Fetch view GET called...')
         '''
         Supports retrieving a file on the server side that the user has 

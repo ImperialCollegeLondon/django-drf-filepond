@@ -25,7 +25,7 @@ Add 'django-drf-filepond' to `INSTALLED_APPS` in your Django settings file (e.g.
 
 INSTALLED_APPS = [
 	...,
-	'django-drf-filepond'
+	'django_drf_filepond'
 ]
 
 ...
@@ -38,7 +38,7 @@ Set the location where you want django-drf-filepond to store temporary file uplo
 ```
 import os
 ...
-DJANGO_DRF_FILEPOND_UPLOAD_TMP = os.path.join(BASE_DIR, filepond-temp-uploads)
+DJANGO_DRF_FILEPOND_UPLOAD_TMP = os.path.join(BASE_DIR, 'filepond-temp-uploads')
 ...
 ```
 
