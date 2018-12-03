@@ -51,7 +51,7 @@ from django.conf.urls import url, include
 
 urlpatterns = [
 	...
-	url(r'^fp/', include('django_drf_filepond.urls'))
+	url(r'^fp/', include('django_drf_filepond.urls')),
 ]
 ```
 
