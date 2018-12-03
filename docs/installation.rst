@@ -28,6 +28,9 @@ file (e.g. ``settings.py``)::
 	
 	...
 
+You will need to re-run ``python manage.py migrate`` to update the database 
+with the table(s) used by django-drf-filepond.
+
 2. Set the temporary file upload location:
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -37,7 +40,7 @@ variable to your settings file, e.g.::
 
 	import os
 	...
-	DJANGO_DRF_FILEPOND_UPLOAD_TMP = os.path.join(BASE_DIR, filepond-temp-uploads)
+	DJANGO_DRF_FILEPOND_UPLOAD_TMP = os.path.join(BASE_DIR, 'filepond-temp-uploads')
 	...
 
 3. Include the app urls into your main url configuration
@@ -50,7 +53,7 @@ in ``urls.py``::
 	
 	urlpatterns = [
 		...
-		url(r'^fp/', include('django_drf_filepond.urls'))
+		url(r'^fp/', include('django_drf_filepond.urls')),
 	]
 
 On the client side, you need to set the endpoints of the ``process``, 
