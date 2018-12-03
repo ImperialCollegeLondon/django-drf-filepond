@@ -2,6 +2,8 @@
 
 **django-drf-filepond** is a Django app that provides a [filepond](https://github.com/pqina/filepond) server-side implementation for Django/Django REST Framework projects. The app can be easily added to your Django projects to provide a server-side API for the filepond file upload library.
 
+Further documentation and a tutorial are available at [https://django-drf-filepond.readthedocs.io](https://django-drf-filepond.readthedocs.io).
+
 #### Installation
 
 The app can be installed from PyPi:
