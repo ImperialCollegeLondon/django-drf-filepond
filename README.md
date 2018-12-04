@@ -58,3 +58,24 @@ urlpatterns = [
 ```
 
 On the client side, you need to set the endpoints of the `process`, `revert`, `fetch`, `load` and `restore` functions to match the endpoint used in your path statement above. For example if the first parameter to `url` is `fp/` then the endpoint for the process function will be `/fp/process/`.
+
+#### Handling file uploads
+
+When a file is uploaded from a filepond client, the file is placed into the temporary upload directory specified by the `DJANGO_DRF_FILEPOND_UPLOAD_TMP` parameter. As per the filepond [server spec](https://pqina.nl/filepond/docs/patterns/api/server/), the server returns an identifier for the file upload. In this case, the identifier is a 22-character unique ID generated using the [shortuuid](https://github.com/skorokithakis/shortuuid) library.
+
+When/if the client subsequently submits the form associated with the filepond instance that triggered the upload, the unique ID will be passed and this can be used to look up the temporary file:
+
+```
+import os
+from django_drf_filepond.models import TemporaryUpload
+
+# Get the temporary upload record
+tu = TemporaryUpload.objects.get(file_id='<22-char unique ID>')
+
+# Move the file somewhere for permanent storage
+# The file will be saved with its original name
+os.rename(tu.get_file_path(), '/path/to/permanent/location/%s' % tu.get_upload_name())
+
+# Delete the temporary upload record and the temporary directory
+tu.delete()
+```
