@@ -18,6 +18,9 @@ LOG = logging.getLogger(__name__)
 logging.basicConfig()
 logging.getLogger(__name__).setLevel(logging.DEBUG)
 
+def get_upload_path(instance, filename):
+    return os.path.join(instance.upload_id, filename)
+
 class TemporaryUpload(models.Model):
     
     FILE_DATA = 'F'
@@ -27,13 +30,21 @@ class TemporaryUpload(models.Model):
         (URL, 'Remote file URL'),
     )
     
-    file_id = models.CharField(primary_key=True, max_length=22, 
+    # The unique ID returned to the client and the name of the temporary 
+    # directory created to hold file data
+    upload_id = models.CharField(primary_key=True, max_length=22, 
                                validators=[MinLengthValidator(22)])
-    file = models.FileField(storage=storage)
+    # The unique ID used to store the file itself
+    file_id = models.CharField(max_length=22, 
+                               validators=[MinLengthValidator(22)])
+    file = models.FileField(storage=storage, upload_to=get_upload_path)
     upload_name = models.CharField(max_length=512)
     uploaded = models.DateTimeField(auto_now_add=True)
     upload_type = models.CharField(max_length = 1, 
                                    choices=UPLOAD_TYPE_CHOICES)
+    
+    def get_file_path(self):
+        return self.file.path
 
 # When a TemporaryUpload record is deleted, we need to delete the 
 # corresponding file from the filesystem by catching the post_delete signal.
@@ -41,8 +52,14 @@ class TemporaryUpload(models.Model):
 def delete_temp_upload_file(sender, instance, **kwargs):
     # Check that the file parameter for the instance is not None
     # and that the file exists and is not a directory! Then we can delete it
-    LOG.debug("*** post_delete signal handler called. Deleting file.")
+    LOG.debug('*** post_delete signal handler called. Deleting file.')
     if instance.file:
         if (os.path.exists(instance.file.path) and 
             os.path.isfile(instance.file.path)):
             os.remove(instance.file.path)
+    
+    file_dir = os.path.join(storage.location, instance.upload_id)
+    if(os.path.exists(file_dir) and os.path.isdir(file_dir)):
+        os.rmdir(file_dir)
+        LOG.debug('*** post_delete signal handler called. Deleting temp dir that contained file.')
+

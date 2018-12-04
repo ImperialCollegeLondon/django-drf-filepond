@@ -7,9 +7,10 @@ with open("README.md", "r") as readme:
 
 setup(
     name="django-drf-filepond",
-    version="0.0.1",
+    version="0.0.2",
     description="Filepond server app for Django REST Framework",
     long_description=long_description,
+    long_description_content_type='text/markdown',
     author="Jeremy Cohen",
     author_email="jeremy.cohen@imperial.ac.uk",
     url="https://github.com/ImperialCollegeLondon/django-drf-filepond",

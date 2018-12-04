@@ -20,6 +20,7 @@ import shortuuid
 from django_drf_filepond.models import TemporaryUpload, storage
 from django_drf_filepond.parsers import PlainTextParser
 from django_drf_filepond.renderers import PlainTextRenderer
+import os
 
 
 LOG = logging.getLogger(__name__)
@@ -59,8 +60,9 @@ class ProcessView(APIView):
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
         # Check that we've received a file and then generate a unique ID
-        # for it.
+        # for it. Also generate a unique UD for the temp upload dir
         file_id = _get_file_id()
+        upload_id = _get_file_id()
         
         if 'filepond' not in request.data:
             raise ParseError("Invalid request data has been provided.")
@@ -87,12 +89,12 @@ class ProcessView(APIView):
         
         # We now need to create the temporary upload object and store the 
         # file and metadata.
-        tu = TemporaryUpload(file_id=file_id, file=file_obj, 
-                             upload_name=upload_name, 
+        tu = TemporaryUpload(upload_id=upload_id, file_id=file_id,  
+                             file=file_obj, upload_name=upload_name, 
                              upload_type=TemporaryUpload.FILE_DATA)
         tu.save()
         
-        response = Response(file_id, status=status.HTTP_200_OK, 
+        response = Response(upload_id, status=status.HTTP_200_OK, 
                             content_type='text/plain')
         return response
 
@@ -115,16 +117,16 @@ class RevertView(APIView):
         # Expecting a 22-character unique ID telling us which temporary 
         # upload to remove.
         LOG.debug('Filepond API: Revert view DELETE called...')
-        file_id = request_data.strip()
+        upload_id = request_data.strip()
         
-        if len(file_id) != 22:
+        if len(upload_id) != 22:
             raise ParseError('The provided data is invalid.')
         
         # Lookup the temporary file record
         try:
-            tu = TemporaryUpload.objects.get(file_id=file_id)
+            tu = TemporaryUpload.objects.get(upload_id=upload_id)
             LOG.debug('About to delete temporary upload <%s> with original '
-                      'filename <%s>' % (tu.file_id, tu.upload_name))
+                      'filename <%s>' % (tu.upload_id, tu.upload_name))
             tu.delete()
         except TemporaryUpload.DoesNotExist:
             raise NotFound('The specified file does not exist.')

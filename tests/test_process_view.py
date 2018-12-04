@@ -31,35 +31,48 @@ class ProcessTestCase(TestCase):
         
         response = self.client.post(reverse('process'),
                                 data=encoded_form, content_type=content_type)
-        #LOG.debug(response)
+
+        
+        # Attempt created file/directory removal before assert statements
+        # so that we can clean up as far as possible at this stage.
+        if hasattr(response, 'data'):
+            dir_path = os.path.join(tmp_upload_dir, response.data)
+            if len(response.data) == 22 and os.path.exists(dir_path):
+                dir_list = os.listdir(dir_path)
+                if len(dir_list) == 1 and len(dir_list[0]) == 22:
+                    file_path = os.path.join(dir_path, dir_list[0])
+                    LOG.debug('Removing generated file <%s>' % file_path)
+                    os.remove(file_path)
+                    LOG.debug('Removing temporary directory <%s>' 
+                              % dir_path)
+                    os.rmdir(dir_path)           
+                else:
+                    LOG.warning('Name of uploaded file in the temp '
+                                'directory doesn\'t have 22 chars, '
+                                'not deleting the file')
+            else:
+                LOG.error('Couldn\'t proceed with file deleting since the '
+                          'response received was not the right length (22)')
+    
         # If the directory for temp file upload didn't exist when we started
-        # the test then it's just been created so we can remove it and its
-        # contents. 
+        # the test then it's just been created so we can remove it.
         if not self.uploaddir_exists_pre_test:
-            if hasattr(response, 'data'):
-                filepath = os.path.join(tmp_upload_dir, response.data)
-                if os.path.exists(filepath):
-                    LOG.debug('Removing generated file <%s>' % filepath)
-                    os.remove(filepath)
-            LOG.debug('Removing created directory <%s>' % tmp_upload_dir)
-            os.removedirs(tmp_upload_dir)
+            LOG.debug('Removing created upload dir <%s>' % tmp_upload_dir)
+            try:
+                os.rmdir(tmp_upload_dir)
+            except OSError as e:
+                LOG.error('Unable to remove the temp upload directory: %s'
+                          % str(e))
 
         self.assertEqual(response.status_code, 200, 
                          'Response received status code <%s> instead of 200.'
                          % (response.status_code))
         
-        data = response.data
-        # If the temp upload directory did exist at the start of the test, 
-        # it will still be present now so we can just remove the created 
-        # temporary upload file from it.
-        upload_file_path = os.path.join(tmp_upload_dir, data)
-        if os.path.exists(upload_file_path):
-            LOG.debug('Removing generated file <%s> - directory was already '
-                      'present so leaving in place' % upload_file_path)
-            os.remove(upload_file_path)
+        self.assertTrue(hasattr(response, 'data'), 
+                        ('The response does not contain a data attribute.'))
         
-        self.assertEqual(len(data), 22, 
-                         'Response data is not of the correct length.')
+        self.assertEqual(len(response.data), 22, 
+                         'Response data is not of the correct length.')        
     
     def test_process_invalid_storage_location(self):
         old_storage = views.storage

@@ -5,7 +5,8 @@ from django.test.testcases import TestCase
 from unittest.mock import Mock
 from django_drf_filepond.models import TemporaryUpload, delete_temp_upload_file
 from django.core.files.uploadedfile import SimpleUploadedFile
-from tempfile import mkstemp
+from tempfile import mkstemp, mkdtemp
+from django.core.files.storage import FileSystemStorage
 
 LOG = logging.getLogger(__name__)
 logging.basicConfig()
@@ -15,6 +16,10 @@ class SignalsTestCase(TestCase):
     
     def test_del_tmp_upload_file(self):
         # Create a temporary file
+        tmp_dir = mkdtemp(prefix='django_test_')
+        self.assertTrue(os.path.exists(tmp_dir), 
+                        'Test temp file was not created.')
+        tmp_dir_split = tmp_dir.rsplit(os.sep, 1) 
         _, path = mkstemp(suffix='.txt', prefix='django_test_', text=True)
         self.assertTrue(os.path.exists(path), 
                         'Test temp file was not created.')
@@ -22,7 +27,11 @@ class SignalsTestCase(TestCase):
         # Mock a TemporaryUpload instance object
         tu = Mock(spec=TemporaryUpload)
         upload_file = Mock(spec=SimpleUploadedFile)
+        models.storage = Mock(spec=FileSystemStorage)
+        models.storage.location = tmp_dir_split[0]
+        
         upload_file.path = path
+        tu.upload_id=tmp_dir_split[1]
         tu.file = upload_file
         delete_temp_upload_file(None, tu)
         self.assertFalse(os.path.exists(path),
