@@ -21,7 +21,7 @@ The tutorial will walk you through the following steps:
   4. Test the service
 
 1. Set up your environment
--------------------------
+---------------------------
 
 Create a directory in which to undertake this tutorial. For example, in 
 your home directory, create the directory ``drf-filepond-tutorial``
@@ -40,8 +40,8 @@ example:
 In ``${TUTORIAL_DIR}``, create a file named ``requirements.txt`` containing 
 the following content::
 
-	Django==2.1.3
-	django-drf-filepond==0.0.1
+	Django>=1.11
+	django-drf-filepond==0.0.2
 
 
 Now create a *virtualenv* in ``${TUTORIAL_DIR}``:
@@ -99,19 +99,19 @@ Save and close the ``settings.py`` file.
 
 Now open the ``${TUTORIAL_DIR}/drf_filepond_tutorial/urls.py`` file.
 
-After the two existing import statements, add a new import statement so 
-that there are now three import statements as follows::
+After the two existing import statements, add a new import statement::
 
-	from django.contrib import admin
-	from django.urls import path
 	from django.conf.urls import url, include
+	
+There should now be three import statements at the top of the ``urls.py`` 
+file.
 
 To the ``urlpatterns`` list, add an additional entry to link in the filepond 
 server URLs such that the ``urlpatterns`` now look as follows::
 
 	urlpatterns = [
     	    path('admin/', admin.site.urls),
-        	url(r'^fp/', include('django_drf_filepond.urls')),
+    	    url(r'^fp/', include('django_drf_filepond.urls')),
 	]
 
 You can now create the database by running:
@@ -177,5 +177,24 @@ should see the demo page shown in the figure below:
 
 .. image:: images/filepond-demo-page.png
 
+You can also test programmatically uploading a file from a remote URL. You 
+can use your browser's developer console while on the django-drf-filepond 
+demo page to call the filepond object's `addFile method <https://pqina.nl/filepond/docs/patterns/api/filepond-instance/#methods>`_ 
+to get filepond to retrieve the file and add it. Place a test text file with 
+some content in it into the ``${TUTORIAL_DIR}/static/`` directory. Call the 
+file ``test.txt``.
 
+In your browser console, enter the following JavaScript code:
 
+.. code-block:: javascript
+
+	testFile = null;
+	result = $('.pond').filepond('addFile', 'http://localhost:8000/demo/test.txt').then(
+		function(file) { testFile = file; }
+	);
+	
+You will now see that the value of ``testFile.serverId`` contains the ID 
+generated for the upload from the URL. The file upload should have appeared 
+in the filepond panel in the webpage and it can be cancelled by clicking the 
+cancel button in the UI in the same way as a file uploaded from the local 
+system by browsing or drag and drop.
