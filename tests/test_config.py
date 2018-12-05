@@ -6,12 +6,13 @@ Django project configuration, that it gets set to a sensible default.
 '''
 import logging
 import os
-from django.apps import apps
+
 from django.conf import settings
-from django.test import TestCase, override_settings
+from django.test import TestCase
+
 from django_drf_filepond import models
 from django_drf_filepond import views
-from imp import reload
+
 
 LOG = logging.getLogger(__name__)
 logging.basicConfig()

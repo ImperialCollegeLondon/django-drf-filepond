@@ -31,6 +31,7 @@ setup(
         "nose",
         "coverage",
         "httpretty",
+        "mock;python_version<'3.3'"
     ],
     zip_safe=False,
     test_suite="tests.runner.start",
