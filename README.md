@@ -86,7 +86,7 @@ tu.delete()
 
 This repository is licensed under a BSD 3-Clause license. Please see the [LICENSE](LICENSE) file in the root of the repository.
 
-### Acknowledgements
+### Acknowledgements
 
 Thanks to [pqina](https://github.com/pqina) for producing the [filepond](https://pqina.nl/filepond/) file upload library that this Django app provides server-side support for.
 
