@@ -1,5 +1,7 @@
 # django-drf-filepond: A filepond server implementation for Django + Django REST Framework
 
+[![PyPI version](https://img.shields.io/pypi/v/django-drf-filepond.svg)](https://pypi.python.org/pypi/django-drf-filepond/) [![Documentation Status](https://readthedocs.org/projects/django-drf-filepond/badge/?version=latest)](http://django-drf-filepond.readthedocs.io/?badge=latest)
+
 **django-drf-filepond** is a Django app that provides a [filepond](https://github.com/pqina/filepond) server-side implementation for Django/Django REST Framework projects. The app can be easily added to your Django projects to provide a server-side API for the filepond file upload library.
 
 Further documentation and a tutorial are available at [https://django-drf-filepond.readthedocs.io](https://django-drf-filepond.readthedocs.io).
@@ -79,3 +81,13 @@ os.rename(tu.get_file_path(), '/path/to/permanent/location/%s' % tu.upload_name)
 # Delete the temporary upload record and the temporary directory
 tu.delete()
 ```
+
+### License
+
+This repository is licensed under a BSD 3-Clause license. Please see the [LICENSE](LICENSE) file in the root of the repository.
+
+### Acknowledgements
+
+Thanks to [pqina](https://github.com/pqina) for producing the [filepond](https://pqina.nl/filepond/) file upload library that this Django app provides server-side support for.
+
+The django-drf-filepond app has been built as part of work that is being supported by UK Research and Innovation (Engineering and Phsycial Sciences Research Council) under grant EP/R025460/1.
