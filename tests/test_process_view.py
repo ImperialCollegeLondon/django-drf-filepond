@@ -13,8 +13,6 @@ from django.core.files.base import ContentFile
 from django_drf_filepond import drf_filepond_settings
 
 LOG = logging.getLogger(__name__)
-logging.basicConfig()
-logging.getLogger(__name__).setLevel(logging.DEBUG)
 
 class ProcessTestCase(TestCase):
     

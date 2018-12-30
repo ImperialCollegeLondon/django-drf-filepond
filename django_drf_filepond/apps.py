@@ -5,8 +5,6 @@ import logging
 from django.conf import settings
 
 LOG = logging.getLogger(__name__)
-logging.basicConfig()
-logging.getLogger(__name__).setLevel(logging.DEBUG)
 
 class DjangoDrfFilepondConfig(AppConfig):
     name = 'django_drf_filepond'

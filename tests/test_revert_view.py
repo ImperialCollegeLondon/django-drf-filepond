@@ -10,8 +10,6 @@ from django_drf_filepond import views
 from django_drf_filepond.models import TemporaryUpload, storage
 
 LOG = logging.getLogger(__name__)
-logging.basicConfig()
-logging.getLogger(__name__).setLevel(logging.DEBUG)
 
 class RevertTestCase(TestCase):
     
