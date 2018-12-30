@@ -15,8 +15,6 @@ FILEPOND_UPLOAD_TMP = getattr(settings, 'DJANGO_DRF_FILEPOND_UPLOAD_TMP',
 storage = FileSystemStorage(location=FILEPOND_UPLOAD_TMP)
 
 LOG = logging.getLogger(__name__)
-logging.basicConfig()
-logging.getLogger(__name__).setLevel(logging.DEBUG)
 
 def get_upload_path(instance, filename):
     return os.path.join(instance.upload_id, filename)

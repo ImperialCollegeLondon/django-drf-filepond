@@ -20,12 +20,8 @@ import shortuuid
 from django_drf_filepond.models import TemporaryUpload, storage
 from django_drf_filepond.parsers import PlainTextParser
 from django_drf_filepond.renderers import PlainTextRenderer
-import os
-
 
 LOG = logging.getLogger(__name__)
-logging.basicConfig()
-logging.getLogger(__name__).setLevel(logging.DEBUG)
 
 def _get_file_id():
     file_id = shortuuid.uuid()

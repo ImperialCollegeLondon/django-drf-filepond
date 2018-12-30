@@ -9,8 +9,6 @@ import cgi
 
 
 LOG = logging.getLogger(__name__)
-logging.basicConfig()
-logging.getLogger(__name__).setLevel(logging.DEBUG)
 
 class FetchTestCase(TestCase):      
 

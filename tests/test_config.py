@@ -15,8 +15,6 @@ from django_drf_filepond import views
 
 
 LOG = logging.getLogger(__name__)
-logging.basicConfig()
-logging.getLogger(__name__).setLevel(logging.DEBUG)
 
 class AppSettingsTestCase(TestCase):
     
