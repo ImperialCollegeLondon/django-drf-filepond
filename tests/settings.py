@@ -103,7 +103,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/2.1/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'en-gb'
 
 TIME_ZONE = 'UTC'
 
@@ -121,3 +121,26 @@ STATIC_URL = '/static/'
 
 # The URL base used for the URL import
 URL_BASE = r'^fp/'
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'default': {
+            'format': '[{levelname}]:{name}:{message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'formatter': 'default',
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'django_drf_filepond': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+        },
+    },
+}
