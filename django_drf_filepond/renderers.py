@@ -6,9 +6,14 @@ Created on 24 Oct 2018
 A renderers module to host a PlainTextRenderer that will render
 plain text responses sending back the raw text to the client.
 '''
-from rest_framework.renderers import BaseRenderer
-import json
 from collections import OrderedDict
+import json
+import logging
+
+from rest_framework.renderers import BaseRenderer
+
+
+LOG = logging.getLogger(__name__)
 
 # This plaintext renderer is taken from the example in the 
 # django rest framework docs since this provides exactly what we 
@@ -27,7 +32,7 @@ class PlainTextRenderer(BaseRenderer):
         '''
         Encode the raw data - default charset is UTF-8.
         '''
-        print('Data is <%s>' % data)
+        LOG.debug('Data is <%s>' % data)
         
         if data:
             if type(data) in [dict, OrderedDict]:
