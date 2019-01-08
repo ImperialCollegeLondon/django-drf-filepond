@@ -226,8 +226,13 @@ class FetchView(APIView):
         
     def head(self, request):
         LOG.debug('Filepond API: Fetch view HEAD called...')
-        (buf, file_id, upload_file_name, 
-                            content_type) = self._process_request(request)
+        result = self._process_request(request)
+        if isinstance(result, tuple):
+            buf, file_id, upload_file_name, content_type = result
+        elif isinstance(result, Response):
+            return result
+        else:
+            raise ValueError('process_request result is of an unexpected type')
         
         file_size = buf.seek(0, os.SEEK_END)
         buf.seek(0) 
@@ -256,8 +261,13 @@ class FetchView(APIView):
     
         
     def get(self, request):
-        (buf, _, upload_file_name, 
-                            content_type) = self._process_request(request)
+        result = self._process_request(request)
+        if isinstance(result, tuple):
+            buf, _, upload_file_name, content_type = result
+        elif isinstance(result, Response):
+            return result
+        else:
+            raise ValueError('process_request result is of an unexpected type')
         response = Response(buf.getvalue(), status=status.HTTP_200_OK, 
                             content_type=content_type)
         response['Content-Disposition'] = ('inline; filename=%s' % 
