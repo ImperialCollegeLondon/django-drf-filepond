@@ -11,6 +11,7 @@ from django.core.files.storage import FileSystemStorage
 import django_drf_filepond.views as views
 from django.core.files.base import ContentFile
 from django_drf_filepond import drf_filepond_settings
+from tests.utils import remove_file_upload_dir_if_required
 
 LOG = logging.getLogger(__name__)
 
@@ -52,15 +53,8 @@ class ProcessTestCase(TestCase):
                 LOG.error('Couldn\'t proceed with file deleting since the '
                           'response received was not the right length (22)')
     
-        # If the directory for temp file upload didn't exist when we started
-        # the test then it's just been created so we can remove it.
-        if not self.uploaddir_exists_pre_test:
-            LOG.debug('Removing created upload dir <%s>' % tmp_upload_dir)
-            try:
-                os.rmdir(tmp_upload_dir)
-            except OSError as e:
-                LOG.error('Unable to remove the temp upload directory: %s'
-                          % str(e))
+        remove_file_upload_dir_if_required(self.uploaddir_exists_pre_test,
+                                           tmp_upload_dir)
 
         self.assertEqual(response.status_code, 200, 
                          'Response received status code <%s> instead of 200.'
