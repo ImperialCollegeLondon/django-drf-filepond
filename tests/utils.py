@@ -1,4 +1,4 @@
-# Some util functions for django-drf-filepond tests
+# Some util functions for django-drf-filepond tests
 import logging
 import os
 

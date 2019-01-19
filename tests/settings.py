@@ -127,8 +127,7 @@ LOGGING = {
     'disable_existing_loggers': False,
     'formatters': {
         'default': {
-            'format': '[{levelname}]:{name}:{message}',
-            'style': '{',
+            'format': '[%(levelname)s]:%(name)s:%(message)s',
         },
     },
     'handlers': {
