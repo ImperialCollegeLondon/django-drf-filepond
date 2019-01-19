@@ -14,7 +14,7 @@ The app can be installed from PyPi:
 pip install django-drf-filepond
 ```
 
-or add it to your list of dependencies in a _requirements.txt_ file.
+or add it to your list of dependencies in a [_requirements.txt_](https://pip.pypa.io/en/stable/user_guide/#requirements-files) file.
 
 #### Configuration
 

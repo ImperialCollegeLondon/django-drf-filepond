@@ -6,7 +6,7 @@ import logging
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.core.files.uploadedfile import UploadedFile
+from django.core.files.uploadedfile import UploadedFile, InMemoryUploadedFile
 from django.core.validators import URLValidator
 import requests
 from requests.exceptions import ConnectionError
@@ -20,6 +20,8 @@ import shortuuid
 from django_drf_filepond.models import TemporaryUpload, storage
 from django_drf_filepond.parsers import PlainTextParser
 from django_drf_filepond.renderers import PlainTextRenderer
+import re
+import os
 
 LOG = logging.getLogger(__name__)
 
@@ -140,7 +142,8 @@ class RestoreView(APIView):
         raise NotImplementedError('The restore function is not yet implemented')
 
 class FetchView(APIView):
-    def get(self, request):
+        
+    def _process_request(self, request):
         LOG.debug('Filepond API: Fetch view GET called...')
         '''
         Supports retrieving a file on the server side that the user has 
@@ -195,52 +198,78 @@ class FetchView(APIView):
             raise ParseError('Provided URL links to HTML content.')
         
         buf = BytesIO()
+        upload_file_name = None
         try:
             with requests.get(target_url, allow_redirects=True, stream=True) as r:
+                if 'Content-Disposition' in r.headers:
+                    cd = r.headers['Content-Disposition']
+                    matches = re.findall('filename=(.+)', cd)
+                    if len(matches):
+                        upload_file_name = matches[0]
                 for chunk in r.iter_content(chunk_size=1048576):
                     buf.write(chunk)
         except ConnectionError as e:
             raise NotFound('Unable to access the requested remote file: %s'
                            % str(e))
         
-        #content_length = buf.tell()
-        # Generate a default filename and then if we can extract the 
-        # filename from the URL, replace the default name with the one from 
-        # the URL. 
         file_id = _get_file_id()
-        upload_file_name = file_id
-        if not target_url.endswith('/'):
-            split = target_url.rsplit('/',1)
-            upload_file_name = split[1] if len(split) > 1 else split[0] 
-            
-        # FIXME: After examining the approach used by fetch in the 
-        # php-boilerplate, it seems that this part of the API is simply used 
-        # to proxy a request to download a file at a specified URL - this 
-        # seems inefficient since the file is sent back to the client and 
-        # then uploaded again to the server. 
-        ## Create the file name for the data to be saved. Also get the 
-        ## original name from the request.
-        ## There is an issue here in that we need to create a Python file
-        ## object to be wrapped as a Django "File". However, in doing this, 
-        ## the file is created. When we save the TemporaryUpload object it 
-        ## calls save on the FileField which then fails because it finds that
-        ## the filename is taken, tries to create an extended alternative 
-        ## name and this goes outside the 22 character require length.
-        ## As a workaround, creating a Django InMemoryUploadedFile instead 
-        ## and using this as the file that will be written to disk.
-        #memfile = InMemoryUploadedFile(buf, None, file_id, content_type, 
-        #                               content_length, None)
-        ##filename = os.path.join(storage.base_location, file_id)
-        ##with open(filename, 'w') as f:
-        ##    file_obj = File(f)        
-        #tu = TemporaryUpload(file_id=file_id, file=memfile, 
-        #                     upload_name=upload_file_name, 
-        #                     upload_type=TemporaryUpload.URL)
-        #tu.save()
-    
-        response = Response(buf.getvalue(), status=status.HTTP_200_OK, 
-                            content_type=content_type)
-        response['Content-Disposition'] = ('inline; filename="%s"' % 
+        # If filename wasn't extracted from Content-Disposition header, get
+        # from the URL or otherwise set it to the auto-generated file_id
+        if not upload_file_name:
+            if not target_url.endswith('/'):
+                split = target_url.rsplit('/',1)
+                upload_file_name = split[1] if len(split) > 1 else split[0]
+            else:
+                upload_file_name = file_id 
+ 
+        return (buf, file_id, upload_file_name, content_type)    
+        
+    def head(self, request):
+        LOG.debug('Filepond API: Fetch view HEAD called...')
+        result = self._process_request(request)
+        if isinstance(result, tuple):
+            buf, file_id, upload_file_name, content_type = result
+        elif isinstance(result, Response):
+            return result
+        else:
+            raise ValueError('process_request result is of an unexpected type')
+        
+        file_size = buf.seek(0, os.SEEK_END)
+        buf.seek(0) 
+        
+        # The addressing of filepond issue #154 
+        # (https://github.com/pqina/filepond/issues/154) means that fetch 
+        # can now store a file downloaded from a remote URL and return file 
+        # metadata in the header if a HEAD request is received. If we get a  
+        # GET request then the standard approach of proxying the file back 
+        # to the client is used.
+        upload_id = _get_file_id()
+        memfile = InMemoryUploadedFile(buf, None, file_id, content_type, 
+                                       file_size, None)
+        tu = TemporaryUpload(upload_id=upload_id, file_id=file_id,  
+                     file=memfile, upload_name=upload_file_name, 
+                     upload_type=TemporaryUpload.URL)
+        tu.save()
+        
+        response = Response(status=status.HTTP_200_OK)
+        response['Content-Type'] = content_type
+        response['Content-Length'] = file_size
+        response['X-Content-Transfer-Id'] = upload_id
+        response['Content-Disposition'] = ('inline; filename=%s' % 
                                            upload_file_name)
         return response
-
+    
+        
+    def get(self, request):
+        result = self._process_request(request)
+        if isinstance(result, tuple):
+            buf, _, upload_file_name, content_type = result
+        elif isinstance(result, Response):
+            return result
+        else:
+            raise ValueError('process_request result is of an unexpected type')
+        response = Response(buf.getvalue(), status=status.HTTP_200_OK, 
+                            content_type=content_type)
+        response['Content-Disposition'] = ('inline; filename=%s' % 
+                                           upload_file_name)
+        return response
