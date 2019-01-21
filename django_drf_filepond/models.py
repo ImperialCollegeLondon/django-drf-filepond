@@ -46,6 +46,7 @@ class TemporaryUpload(models.Model):
     def get_file_path(self):
         return self.file.path
 
+
 # When a TemporaryUpload record is deleted, we need to delete the 
 # corresponding file from the filesystem by catching the post_delete signal.
 @receiver(post_delete, sender=TemporaryUpload)

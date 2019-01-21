@@ -22,12 +22,29 @@ from django_drf_filepond.parsers import PlainTextParser
 from django_drf_filepond.renderers import PlainTextRenderer
 import re
 import os
+import mimetypes
+from django.http.response import HttpResponse
 
 LOG = logging.getLogger(__name__)
 
 def _get_file_id():
     file_id = shortuuid.uuid()
     return file_id
+
+# FIXME: This is a very basic approach to working out the MIME type.
+#        It is prone to errors and can be inaccurate since it is 
+#        based only on the file extension.
+#        A better approach would be to use python-magic but this 
+#        introduces another dependency and will likely result in  
+#        issues on some platforms.
+#        Another option is to store the MIME type in the DB when the 
+#        file is uploaded and look this up and return it.
+#
+# At present this helper function takes only the filename (the data 
+# parameter). If this is refactored to use something like python-magic, 
+# 'data' will be the header data from the file to enable file type detection. 
+def _get_content_type(data, temporary=True):
+    return mimetypes.guess_type(data)[0]
 
 class ProcessView(APIView):
     '''
@@ -132,14 +149,109 @@ class RevertView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class LoadView(APIView):
+    
+    # Expect the upload ID to be provided with the 'name' parameter
     def get(self, request):
         LOG.debug('Filepond API: Load view GET called...')
-        raise NotImplementedError('The load function is not yet implemented')
+        
+        if ((not hasattr(settings, 'DJANGO_DRF_FILEPOND_FILE_STORE_PATH')) 
+            or 
+            (not os.path.exists(settings.DJANGO_DRF_FILEPOND_FILE_STORE_PATH))
+            or
+            (not os.path.isdir(settings.DJANGO_DRF_FILEPOND_FILE_STORE_PATH))
+        ):
+            return Response('The file upload settings are not configured '
+                            'correctly.', 
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        file_path_base = settings.DJANGO_DRF_FILEPOND_FILE_STORE_PATH
+        
+        if 'name' not in request.GET:
+            return Response('A required parameter is missing.', 
+                            status=status.HTTP_400_BAD_REQUEST)
+        
+        name = request.GET['name']
+        
+        name_fmt = re.compile('^([%s]){22}$' % (shortuuid.get_alphabet()))
+        
+        if not name_fmt.match(name):
+            return Response('An invalid ID has been provided.',
+                            status=status.HTTP_400_BAD_REQUEST)
+        
+        LOG.debug('Carrying out load for ID <%s>' % name)
+        
+        # Since this is a permanently stored file, see if we have the 
+        # directory with the provided name in the file store location
+        dir_path = os.path.join(file_path_base, name)
+        if (not os.path.exists(dir_path)) or (not os.path.isdir(dir_path)):
+            return Response('The requested file ID cannot be found.',
+                            status=status.HTTP_404_NOT_FOUND)
+        
+        # Now check that we have a single file within that location
+        dir_files = os.listdir(dir_path)
+        if len(dir_files) == 1:
+            target_file_name = dir_files[0]
+            target_file = os.path.join(dir_path, target_file_name)
+        else:
+            return Response('The requested file ID is invalid.',
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            with open(target_file, 'rb') as f:
+                data = f.read() 
+        except OSError as e:
+            LOG.error('Error reading requested file: %s' % str(e))
+            return Response('Error reading file data...',
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        ct = _get_content_type(target_file_name)
+        
+        response = HttpResponse(data, content_type=ct)
+        response['Content-Disposition'] = ('inline; filename=%s' % 
+                                           target_file_name)
+        
+        return response
 
 class RestoreView(APIView):
+    
+    # Expect the upload ID to be provided with the 'name' parameter
     def get(self, request):
         LOG.debug('Filepond API: Restore view GET called...')
-        raise NotImplementedError('The restore function is not yet implemented')
+        if 'name' not in request.GET:
+            return Response('A required parameter is missing.', 
+                            status=status.HTTP_400_BAD_REQUEST)
+        
+        name = request.GET['name']
+        
+        name_fmt = re.compile('^([%s]){22}$' % (shortuuid.get_alphabet()))
+        
+        if not name_fmt.match(name):
+            return Response('An invalid ID has been provided.',
+                            status=status.HTTP_400_BAD_REQUEST)
+        
+        LOG.debug('Carrying out restore for file ID <%s>' % name)
+        
+        try:
+            tu = TemporaryUpload.objects.get(upload_id=name)
+        except TemporaryUpload.DoesNotExist:
+            return Response('Not found', status=status.HTTP_404_NOT_FOUND)
+        
+        upload_file_name = tu.upload_name
+        try:
+            with open(tu.file.path, 'rb') as f:
+                data = f.read() 
+        except OSError as e:
+            LOG.error('Error reading requested file: %s' % str(e))
+            return Response('Error reading file data...',
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        ct = _get_content_type(upload_file_name)
+        
+        response = HttpResponse(data, content_type=ct)
+        response['Content-Disposition'] = ('inline; filename=%s' % 
+                                           upload_file_name)
+        
+        return response
 
 class FetchView(APIView):
         
