@@ -27,6 +27,8 @@ from django.http.response import HttpResponse
 
 LOG = logging.getLogger(__name__)
 
+LOAD_RESTORE_PARAM_NAME = 'id'
+
 def _get_file_id():
     file_id = shortuuid.uuid()
     return file_id
@@ -166,23 +168,23 @@ class LoadView(APIView):
         
         file_path_base = settings.DJANGO_DRF_FILEPOND_FILE_STORE_PATH
         
-        if 'name' not in request.GET:
+        if LOAD_RESTORE_PARAM_NAME not in request.GET:
             return Response('A required parameter is missing.', 
                             status=status.HTTP_400_BAD_REQUEST)
         
-        name = request.GET['name']
+        upload_id = request.GET[LOAD_RESTORE_PARAM_NAME]
         
-        name_fmt = re.compile('^([%s]){22}$' % (shortuuid.get_alphabet()))
+        upload_id_fmt = re.compile('^([%s]){22}$' % (shortuuid.get_alphabet()))
         
-        if not name_fmt.match(name):
+        if not upload_id_fmt.match(upload_id):
             return Response('An invalid ID has been provided.',
                             status=status.HTTP_400_BAD_REQUEST)
         
-        LOG.debug('Carrying out load for ID <%s>' % name)
+        LOG.debug('Carrying out load for ID <%s>' % upload_id)
         
         # Since this is a permanently stored file, see if we have the 
-        # directory with the provided name in the file store location
-        dir_path = os.path.join(file_path_base, name)
+        # directory with the provided upload_id in the file store location
+        dir_path = os.path.join(file_path_base, upload_id)
         if (not os.path.exists(dir_path)) or (not os.path.isdir(dir_path)):
             return Response('The requested file ID cannot be found.',
                             status=status.HTTP_404_NOT_FOUND)
@@ -217,22 +219,23 @@ class RestoreView(APIView):
     # Expect the upload ID to be provided with the 'name' parameter
     def get(self, request):
         LOG.debug('Filepond API: Restore view GET called...')
-        if 'name' not in request.GET:
+        if LOAD_RESTORE_PARAM_NAME not in request.GET:
             return Response('A required parameter is missing.', 
                             status=status.HTTP_400_BAD_REQUEST)
         
-        name = request.GET['name']
+        upload_id = request.GET[LOAD_RESTORE_PARAM_NAME]
         
-        name_fmt = re.compile('^([%s]){22}$' % (shortuuid.get_alphabet()))
+        upload_id_fmt = re.compile('^([%s]){22}$' % 
+                                   (shortuuid.get_alphabet()))
         
-        if not name_fmt.match(name):
+        if not upload_id_fmt.match(upload_id):
             return Response('An invalid ID has been provided.',
                             status=status.HTTP_400_BAD_REQUEST)
         
-        LOG.debug('Carrying out restore for file ID <%s>' % name)
+        LOG.debug('Carrying out restore for file ID <%s>' % upload_id)
         
         try:
-            tu = TemporaryUpload.objects.get(upload_id=name)
+            tu = TemporaryUpload.objects.get(upload_id=upload_id)
         except TemporaryUpload.DoesNotExist:
             return Response('Not found', status=status.HTTP_404_NOT_FOUND)
         

@@ -1,6 +1,14 @@
 import logging
 
 from django.test.testcases import TestCase
+from django_drf_filepond.views import _get_file_id
+from django_drf_filepond.models import TemporaryUpload
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.urls import reverse
+from django.conf import settings
+import django_drf_filepond.drf_filepond_settings as drf_fp_settings
+import cgi
+import os
 
 LOG = logging.getLogger(__name__)
 
@@ -15,11 +23,14 @@ LOG = logging.getLogger(__name__)
 # test_restore_incorrect_method: Make POST/PUT/DELETE requests to the restore  
 #     endpoint to check that these are rejected with 405 method not allowed
 #
+# test_restore_invalid_param: Make a GET request to the restore endpoint   
+#     with an incorrect parameter name in the URL query string. 
+#
 # test_restore_blank_id: Make a GET request to the restore endpoint with  
 #     a blank ID provided in the URL query string. 
 #
-# test_restore_invalid_id: Make a GET request to the restore endpoint with    
-#     an invalid ID provided in the URL query string.
+# test_restore_invalid_id_format: Make a GET request to the restore     
+#     endpoint with an invalid ID provided in the URL query string.
 #
 # test_restore_id_notfound_error: Make a GET request to the restore endpoint    
 #     with an ID that is a valid format but for which no record exists (404).
@@ -27,31 +38,103 @@ LOG = logging.getLogger(__name__)
 # test_restore_file_notfound_error: Make a GET request to the restore     
 #     endpoint with a valid ID but for which the file doesn't exist (404).
 #
-# test_restore_file_read_error: Make a GET request to the restore endpoint    
-#     where an occurs when trying to read the target file (500) 
-#
 # test_restore_successful_request: Make a GET request to the restore endpoint  
 #     that is successful. 
 #
 class RestoreTestCase(TestCase):
 
-    def test_restore_incorrect_method(self):
-        pass  
+    def setUp(self):
+        self.upload_id = _get_file_id()
+        self.file_id = _get_file_id()
+        self.file_content = ('This is some test file data for an '
+                             'uploaded file.')
+        self.fn = 'my_test_file.txt'
+        uploaded_file = SimpleUploadedFile(self.fn, 
+                                           str.encode(self.file_content))
+        tu = TemporaryUpload(upload_id=self.upload_id,
+                             file_id=self.file_id,
+                             file=uploaded_file, upload_name=self.fn, 
+                             upload_type=TemporaryUpload.FILE_DATA)
+        tu.save()
 
+    def test_restore_incorrect_method(self):
+        response_post = self.client.post((reverse('restore') +
+                                          ('?id=%s' % self.upload_id)))
+        response_del = self.client.delete((reverse('restore') +
+                                           ('?id=%s' % self.upload_id)))
+        response_put = self.client.put((reverse('restore') +
+                                        ('?id=%s' % self.upload_id)))
+        self.assertEqual(response_post.status_code, 405)
+        self.assertEqual(response_del.status_code, 405)
+        self.assertEqual(response_put.status_code, 405)
+
+    def test_restore_invalid_param(self):
+        response = self.client.get((reverse('restore') + '?name='))
+        self.assertContains(response, 'A required parameter is missing.', 
+                            status_code=400)
+        
     def test_restore_blank_id(self):
-        pass   
+        response = self.client.get((reverse('restore') + '?id='))
+        self.assertContains(response, 'An invalid ID has been provided.', 
+                            status_code=400)
 
     def test_restore_invalid_id(self):
-        pass    
+        response = self.client.get((reverse('restore') + '?id=sdfsdu732'))
+        self.assertContains(response, 'An invalid ID has been provided.', 
+                            status_code=400)    
 
     def test_restore_id_notfound_error(self):
-        pass    
+        response = self.client.get((reverse('restore') + 
+                                    '?id=sdfsdu732defh754dhsrr2'))
+        self.assertContains(response, 'Not found', 
+                            status_code=404)
 
     def test_restore_file_notfound_error(self):
-        pass     
-
-    def test_restore_file_read_error(self):
-        pass    
+        tu = TemporaryUpload.objects.get(upload_id=self.upload_id)
+        os.remove(tu.get_file_path())
+        response = self.client.get((reverse('restore') +
+                                    ('?id=%s' % self.upload_id)))
+        self.assertContains(response, 'Error reading file data...', 
+                            status_code=500)
 
     def test_restore_successful_request(self):
-        pass  
+        response = self.client.get((reverse('restore') +
+                                    ('?id=%s' % self.upload_id)))
+        # We should get back the file data with a Content-Disposition
+        # header similar to:
+        # 'Content-Disposition: inline; filename="<file name>"'
+        self.assertEqual(response.status_code, 200, 
+                         'An invalid response code has been received.')
+        
+        # Check the Content-Disposition header is valid
+        self.assertTrue('Content-Disposition' in response,
+                        ('Response does not contain a required '
+                         'Content-Disposition header.'))
+        cdisp = cgi.parse_header(response['Content-Disposition'])
+        self.assertTrue('filename' in cdisp[1],('Content-Disposition'
+                         ' header doesn\'t contain filename parameter'))
+        fname = cdisp[1]['filename']
+        self.assertEqual(self.fn, fname, ('Returned filename is not '
+                                'equal to the provided filename value.'))
+        
+        self.assertEqual(response.content.decode(), self.file_content,
+                         'The response data is invalid.')
+    
+    def tearDown(self):
+        upload_tmp_base = getattr(settings, 
+                                  'DJANGO_DRF_FILEPOND_UPLOAD_TMP',
+                                  None) or drf_fp_settings.UPLOAD_TMP
+        upload_tmp_dir = os.path.join(upload_tmp_base, self.upload_id)
+        upload_tmp_file = os.path.join(upload_tmp_dir, self.fn)
+        if (os.path.exists(upload_tmp_file) and 
+            os.path.isfile(upload_tmp_file)):
+            LOG.debug('Removing temporary file: <%s>' % upload_tmp_file)
+            os.remove(upload_tmp_file)
+        if (os.path.exists(upload_tmp_dir) and 
+            os.path.isdir(upload_tmp_dir)):
+            LOG.debug('Removing temporary dir: <%s>' % upload_tmp_dir)
+            os.rmdir(upload_tmp_dir)
+            
+            
+        
+        
