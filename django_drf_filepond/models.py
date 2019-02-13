@@ -46,7 +46,18 @@ class TemporaryUpload(models.Model):
     def get_file_path(self):
         return self.file.path
 
-
+class StoredUpload(models.Model):
+        
+    # The unique upload ID assigned to this file when it was originally 
+    # uploaded (or retrieved from a remote URL) 
+    upload_id = models.CharField(primary_key=True, max_length=22, 
+                               validators=[MinLengthValidator(22)])
+    # The file name and path (relative to the base file store directory 
+    # as set by DJANGO_DRF_FILEPOND_FILE_STORE_PATH).
+    file_path = models.CharField(max_length=2048)
+    uploaded = models.DateTimeField()
+    stored = models.DateTimeField(auto_now_add=True)
+    
 # When a TemporaryUpload record is deleted, we need to delete the 
 # corresponding file from the filesystem by catching the post_delete signal.
 @receiver(post_delete, sender=TemporaryUpload)

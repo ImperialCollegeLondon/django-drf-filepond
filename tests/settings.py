@@ -122,6 +122,8 @@ STATIC_URL = '/static/'
 # The URL base used for the URL import
 URL_BASE = r'^fp/'
 
+DJANGO_DRF_FILEPOND_FILE_STORE_PATH = os.path.join(BASE_DIR, 'filestore')
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
