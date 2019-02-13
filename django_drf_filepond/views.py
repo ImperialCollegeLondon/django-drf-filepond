@@ -243,7 +243,7 @@ class RestoreView(APIView):
         try:
             with open(tu.file.path, 'rb') as f:
                 data = f.read() 
-        except OSError as e:
+        except IOError as e:
             LOG.error('Error reading requested file: %s' % str(e))
             return Response('Error reading file data...',
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
