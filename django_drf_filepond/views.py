@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 from io import BytesIO
 import logging
 
+import django_drf_filepond.drf_filepond_settings as local_settings
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import UploadedFile, InMemoryUploadedFile
@@ -70,7 +71,7 @@ class ProcessView(APIView):
         # TODO: Check whether this is necessary - maybe add a security 
         # parameter that can be disabled to turn off this check if the 
         # developer wishes?
-        if ((not hasattr(settings, 'DJANGO_DRF_FILEPOND_UPLOAD_TMP')) and 
+        if ((not hasattr(local_settings, 'UPLOAD_TMP')) and 
             (not (storage.location).startswith(settings.BASE_DIR))):
             return Response('The file upload path settings are not '
                             'configured correctly.', 
@@ -160,18 +161,17 @@ class LoadView(APIView):
     def get(self, request):
         LOG.debug('Filepond API: Load view GET called...')
         
-        if ((not hasattr(settings, 
-                         'DJANGO_DRF_FILEPOND_FILE_STORE_PATH')) 
+        if ((not hasattr(local_settings, 'FILE_STORE_PATH')) 
             or 
-            (not os.path.exists(settings.DJANGO_DRF_FILEPOND_FILE_STORE_PATH))
+            (not os.path.exists(local_settings.FILE_STORE_PATH))
             or
-            (not os.path.isdir(settings.DJANGO_DRF_FILEPOND_FILE_STORE_PATH))
+            (not os.path.isdir(local_settings.FILE_STORE_PATH))
         ):
             return Response('The file upload settings are not configured '
                             'correctly.', 
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
-        file_path_base = settings.DJANGO_DRF_FILEPOND_FILE_STORE_PATH
+        file_path_base = local_settings.FILE_STORE_PATH
         
         if LOAD_RESTORE_PARAM_NAME not in request.GET:
             return Response('A required parameter is missing.', 

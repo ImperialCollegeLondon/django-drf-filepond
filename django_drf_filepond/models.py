@@ -3,17 +3,20 @@ from __future__ import unicode_literals
 
 import logging
 import os
+
 from django.conf import settings
-from django.db import models
+from django.core.files.storage import FileSystemStorage
 from django.core.validators import MinLengthValidator
+from django.db import models
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
-from django.core.files.storage import FileSystemStorage
 
 import django_drf_filepond.drf_filepond_settings as local_settings
 
-FILEPOND_UPLOAD_TMP = getattr(settings, 'DJANGO_DRF_FILEPOND_UPLOAD_TMP',
-                        os.path.join(settings.BASE_DIR,'filepond_uploads'))
+
+FILEPOND_UPLOAD_TMP = getattr(local_settings, 'UPLOAD_TMP',
+                              os.path.join(
+                                  settings.BASE_DIR,'filepond_uploads'))
 storage = FileSystemStorage(location=FILEPOND_UPLOAD_TMP)
 
 LOG = logging.getLogger(__name__)
