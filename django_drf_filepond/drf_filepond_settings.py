@@ -17,3 +17,6 @@ _app_prefix = 'DJANGO_DRF_FILEPOND_'
 
 UPLOAD_TMP = getattr(settings, _app_prefix+'UPLOAD_TMP',
                      os.path.join(settings.BASE_DIR,'filepond_uploads'))
+
+DELETE_UPLOAD_TMP_DIRS = getattr(settings, 
+                                 _app_prefix+'DELETE_UPLOAD_TMP_DIRS', True)

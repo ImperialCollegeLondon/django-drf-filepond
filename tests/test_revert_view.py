@@ -8,6 +8,7 @@ from django.urls import reverse
 
 from django_drf_filepond import views
 from django_drf_filepond.models import TemporaryUpload, storage
+import django_drf_filepond.drf_filepond_settings as local_settings
 
 LOG = logging.getLogger(__name__)
 
@@ -27,6 +28,16 @@ class RevertTestCase(TestCase):
                     upload_type=TemporaryUpload.FILE_DATA)
         
     def tearDown(self):
+        # Check that temp files in the storage directory have been removed
+        upload_dir_to_check = os.path.join(storage.location, self.upload_id)
+        upload_file_to_check = os.path.join(upload_dir_to_check, self.file_id)
+        if (os.path.exists(upload_file_to_check) and 
+            os.path.isfile(upload_file_to_check)):
+            os.remove(upload_file_to_check)
+        if (os.path.exists(upload_dir_to_check) and 
+            os.path.isdir(upload_dir_to_check)):
+            os.rmdir(upload_dir_to_check)
+        
         # If the base upload dir didn't exist at startup, we remove it now 
         if not self.base_upload_dir_at_startup:
             if len(os.listdir(storage.location)) == 0:
@@ -65,3 +76,24 @@ class RevertTestCase(TestCase):
         # Check that the file was removed
         self.assertFalse(os.path.exists(file_path), 
                         'The test file wasn\'t removed.')
+    
+    def test_revert_no_delete_dir(self):
+        local_settings.DELETE_UPLOAD_TMP_DIRS = False
+        # Check that our record is in the database
+        tu = TemporaryUpload.objects.get(upload_id=self.upload_id)
+        
+        # Check that the file exists
+        file_path = tu.get_file_path()
+        self.assertTrue(os.path.exists(file_path), 
+                        'Test file to remove doesn\'t exist.')
+        
+        response = self.client.delete(reverse('revert'),
+                        data=str(self.upload_id), content_type='text/plain')
+        self.assertEqual(response.status_code, 204, 
+                         'Expecting no content response code.')
+        
+        # Check that the file was removed but the directory was not
+        self.assertFalse(os.path.exists(file_path), 
+                        'The test file wasn\'t removed.')
+        self.assertTrue(os.path.exists(os.path.dirname(file_path)), 
+                        'The test file temp dir was unexpectedly removed.')
