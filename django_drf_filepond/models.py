@@ -61,6 +61,9 @@ class StoredUpload(models.Model):
     uploaded = models.DateTimeField()
     stored = models.DateTimeField(auto_now_add=True)
     
+    def get_absolute_file_path(self):
+        return os.path.join(local_settings.FILE_STORE_PATH, self.file_path)
+    
 # When a TemporaryUpload record is deleted, we need to delete the 
 # corresponding file from the filesystem by catching the post_delete signal.
 @receiver(post_delete, sender=TemporaryUpload)

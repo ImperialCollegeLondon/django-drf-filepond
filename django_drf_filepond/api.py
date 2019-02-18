@@ -27,6 +27,8 @@ LOG = logging.getLogger(__name__)
 # parameter as a query string parameter using the "id" key.
 def store_upload(upload_id, destination_file_path):
     if ((not hasattr(local_settings, 'FILE_STORE_PATH')) 
+        or
+        (not local_settings.FILE_STORE_PATH)
         or 
         (not os.path.exists(local_settings.FILE_STORE_PATH))
         or
@@ -78,7 +80,8 @@ def store_upload(upload_id, destination_file_path):
                       file_path=destination_file_path, uploaded=tu.uploaded)
     
     try:
-        os.makedirs(target_dir)
+        if not os.path.exists(target_dir):
+            os.makedirs(target_dir)
         shutil.copy2(tu.get_file_path(), target_file_path)
         su.save()
         tu.delete()
