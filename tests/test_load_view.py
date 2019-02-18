@@ -5,8 +5,7 @@ from django_drf_filepond.views import _get_file_id
 from django_drf_filepond.models import TemporaryUpload, StoredUpload
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
-from django.conf import settings
-import django_drf_filepond.drf_filepond_settings as drf_fp_settings
+import django_drf_filepond.drf_filepond_settings as local_settings
 import cgi
 import os
 import shutil
@@ -69,15 +68,11 @@ class LoadTestCase(TestCase):
 
 
     @classmethod
-    def setUpClass(cls):
-        file_store_path = getattr(settings, 
-                         'DJANGO_DRF_FILEPOND_FILE_STORE_PATH', None)
-        LOG.debug('File store path in %s setup' % __name__)
-        cls.FILE_STORE_EXISTS = os.path.exists(file_store_path)
+    def setUpTestData(cls):
+        file_store_path = getattr(local_settings,'FILE_STORE_PATH', None)
+        LOG.debug('File store path in %s setup: %s' 
+                  % (__name__, file_store_path))
         cls.FILE_STORE_PATH = file_store_path
-        if not cls.FILE_STORE_EXISTS:
-            LOG.debug('Creating file store directory in class setup')
-            os.makedirs(file_store_path)
 
     def setUp(self):
         # Set up an initial file upload
@@ -185,12 +180,8 @@ class LoadTestCase(TestCase):
                                   self.file_content)
     
     def tearDown(self):
-        upload_tmp_base = getattr(settings, 
-                                  'DJANGO_DRF_FILEPOND_UPLOAD_TMP',
-                                  None) or drf_fp_settings.UPLOAD_TMP
-        filestore_base = getattr(settings, 
-                                 'DJANGO_DRF_FILEPOND_FILE_STORE_PATH',
-                                 None) or drf_fp_settings.FILE_STORE_PATH
+        upload_tmp_base = getattr(local_settings, 'UPLOAD_TMP', None)
+        filestore_base = getattr(local_settings, 'FILE_STORE_PATH', None)
         upload_tmp_dir = os.path.join(upload_tmp_base, self.upload_id)
         upload_tmp_file = os.path.join(upload_tmp_dir, self.fn)
         test_file = os.path.join(filestore_base, self.test_filename)
@@ -209,12 +200,3 @@ class LoadTestCase(TestCase):
         if (os.path.exists(stored_file) and os.path.isfile(stored_file)):
             LOG.debug('Removing stored file: <%s>' % stored_file)
             os.remove(stored_file)
-            
-    @classmethod
-    def tearDownClass(cls):
-        if not cls.FILE_STORE_EXISTS:
-            LOG.debug('Removing file store directory since it was '
-                      'not present at the start of the tests.')
-            os.rmdir(cls.FILE_STORE_PATH)
-        
-        
