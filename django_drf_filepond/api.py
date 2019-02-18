@@ -72,7 +72,7 @@ def store_upload(upload_id, destination_file_path):
         LOG.error('File with specified name and path <%s> already exists' 
                   % destination_file_path)
         raise FileExistsError('The specified temporary file cannot be stored'
-                              'to the specified location - file exists.')
+                              ' to the specified location - file exists.')
     
     su = StoredUpload(upload_id=tu.upload_id,  
                       file_path=destination_file_path, uploaded=tu.uploaded)

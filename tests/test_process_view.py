@@ -1,17 +1,19 @@
-from django.test import TestCase
-
-import logging
 from io import BytesIO
-from django.core.files.uploadedfile import SimpleUploadedFile
+import logging
 import os
-from django.urls import reverse
-from django.test.client import encode_multipart, RequestFactory
 import uuid
-from django.core.files.storage import FileSystemStorage
-import django_drf_filepond.views as views
+
 from django.core.files.base import ContentFile
+from django.core.files.storage import FileSystemStorage
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import TestCase
+from django.test.client import encode_multipart, RequestFactory
+from django.urls import reverse
+
 from django_drf_filepond import drf_filepond_settings
+import django_drf_filepond.views as views
 from tests.utils import remove_file_upload_dir_if_required
+
 
 LOG = logging.getLogger(__name__)
 
@@ -65,7 +67,7 @@ class ProcessTestCase(TestCase):
         
         self.assertEqual(len(response.data), 22, 
                          'Response data is not of the correct length.')        
-    
+
     def test_process_invalid_storage_location(self):
         old_storage = views.storage
         views.storage = FileSystemStorage(location='/django_test')
