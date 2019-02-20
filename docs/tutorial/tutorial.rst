@@ -11,7 +11,7 @@ this tutorial. The web page uses filepond's jQuery adapter, loaded from a
 CDN, and is based on the `Bootstrap <https://getbootstrap.com/>`_ library's 
 `starter template <https://getbootstrap.com/docs/4.1/examples/starter-template/>`_.
 
-*NOTE: This tutorial assumes that you are using Python 3 and have `virtualenv <https://virtualenv.pypa.io/en/latest/>`_ installed*
+*NOTE: This tutorial assumes that you are using Python 3 and have* `virtualenv <https://virtualenv.pypa.io/en/latest/>`_ *installed*
 
 The tutorial will walk you through the following steps:
 
