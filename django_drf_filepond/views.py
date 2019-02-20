@@ -82,13 +82,22 @@ class ProcessView(APIView):
         file_id = _get_file_id()
         upload_id = _get_file_id()
         
-        if 'filepond' not in request.data:
+        # By default the upload element name is expected to be "filepond"
+        # As raised in issue #4, there are cases where there may be more 
+        # than one filepond instance on a page, or the developer has opted 
+        # not to use the name "filepond" for the filepond instance.
+        # Using the example from #4, this provides support these cases.
+        upload_field_name = 'filepond'
+        if 'fp_upload_field' in request.data:
+            upload_field_name = request.data['fp_upload_field']    
+        
+        if upload_field_name not in request.data:
             raise ParseError("Invalid request data has been provided.")
             
-        file_obj = request.data['filepond']
+        file_obj = request.data[upload_field_name]
         
         # Save original file name and set name of saved file to the unique ID
-        upload_name = file_obj.name
+        upload_filename = file_obj.name
         file_obj.name = file_id
         
         # The type of parsed data should be a descendant of an UploadedFile
@@ -108,7 +117,7 @@ class ProcessView(APIView):
         # We now need to create the temporary upload object and store the 
         # file and metadata.
         tu = TemporaryUpload(upload_id=upload_id, file_id=file_id,  
-                             file=file_obj, upload_name=upload_name, 
+                             file=file_obj, upload_name=upload_filename, 
                              upload_type=TemporaryUpload.FILE_DATA)
         tu.save()
         
