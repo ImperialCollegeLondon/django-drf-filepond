@@ -107,6 +107,18 @@ to manage other features of the library. These are detailed in this section.
 	directories in order to avoid a build up of potentially very large   
 	numbers of empty directories on the filesystem.
 	   
+Using a non-standard element name for your client-side filepond instance:
+
+	If you have a filepond instance on your client web page that uses an  
+	element name other than the default ``filepond``, *django-drf-filepond* 
+	can now handle this. For example, if you have multiple filepond 
+	instances on a page, you will need to give each instance a different 
+	name. To take advatage of this feature, you will need to inject an   
+	additional parameter ``fp_upload_field`` into the HTTP upload request 
+	which provides the name of the filepond form instance to process. An 
+	example of this is shown in the `issue <https://github.com/ImperialCollegeLondon/django-drf-filepond/issues/4#issue-412361507>`_ 
+	describing the request for this feature.   
+	
 
 Logging
 -------
