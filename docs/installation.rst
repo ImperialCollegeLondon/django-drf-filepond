@@ -62,6 +62,52 @@ endpoint used in your path statement above. For example if the first
 parameter to ``url`` is ``^fp/`` then the endpoint for the ``process`` 
 function will be ``/fp/process/``.
 
+(Optional) 4. Set the permanent file store location
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+If you wish to let django-drf-filepond manage the permanent storage of file 
+uploads (note that this is required if you wish to use the load method), 
+you need to set ``DJANGO_DRF_FILEPOND_FILE_STORE_PATH`` in your application 
+settings file, e.g.::
+
+	...
+	DJANGO_DRF_FILEPOND_FILE_STORE_PATH = os.path.join(BASE_DIR, 'stored_uploads')
+	...
+
+
+Advanced Configuration Options
+------------------------------
+
+There are some optional additional configuration parameters that can be used 
+to manage other features of the library. These are detailed in this section.
+
+``DJANGO_DRF_FILEPOND_DELETE_UPLOAD_TMP_DIRS`` (*default*: ``True``):
+
+	When a file is uploaded from a client using *filepond*, or pulled from a 
+	remote URL as a result of a call to the fetch endpoint from the filepond 
+	client, a temporary directory is created for the uploaded/fetched file  
+	to be placed into as a temporary upload. When the temporary upload is 
+	subsequently removed, either because it is cancelled or because it is 
+	moved to permanent storage, the file stored as a temporary upload is 
+	removed along with the temporary directory that it is stored in. The 
+	approach of creating a temporary directory named with a unique ID 
+	specific to the individual file being uploaded is as described in the 
+	`filepond server documentation <https://pqina.nl/filepond/docs/patterns/api/server/#process>`_.
+	
+	In cases where there are large numbers of temporary uploads being 
+	created and removed, if there is a need to reduce the load on the 
+	filesystem, setting ``DJANGO_DRF_FILEPOND_DELETE_UPLOAD_TMP_DIRS`` to 
+	``False`` will prevent the temporary directories from being removed when 
+	a temporary upload is deleted. The files within those directories will 
+	still be removed.
+	
+	*NOTE:* If you set ``DJANGO_DRF_FILEPOND_DELETE_UPLOAD_TMP_DIRS`` to   
+	``False``, you will need to have some alternative periodic "garbage   
+	collection" process in operation to remove all empty temporary   
+	directories in order to avoid a build up of potentially very large   
+	numbers of empty directories on the filesystem.
+	   
+
 Logging
 -------
 
