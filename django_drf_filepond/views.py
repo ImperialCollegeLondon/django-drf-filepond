@@ -5,7 +5,6 @@ from io import BytesIO
 import logging
 
 import django_drf_filepond.drf_filepond_settings as local_settings
-from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import UploadedFile, InMemoryUploadedFile
 from django.core.validators import URLValidator
@@ -72,7 +71,7 @@ class ProcessView(APIView):
         # parameter that can be disabled to turn off this check if the 
         # developer wishes?
         if ((not hasattr(local_settings, 'UPLOAD_TMP')) or 
-            (not (storage.location).startswith(settings.BASE_DIR))):
+            (not (storage.location).startswith(local_settings.BASE_DIR))):
             return Response('The file upload path settings are not '
                             'configured correctly.', 
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)

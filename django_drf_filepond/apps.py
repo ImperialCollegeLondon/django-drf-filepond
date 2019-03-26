@@ -2,7 +2,6 @@ from django.apps import AppConfig
 
 import os
 import logging
-from django.conf import settings
 import django_drf_filepond.drf_filepond_settings as local_settings
 
 LOG = logging.getLogger(__name__)
@@ -14,7 +13,7 @@ class DjangoDrfFilepondConfig(AppConfig):
     def ready(self):
         upload_tmp = getattr(local_settings, 'UPLOAD_TMP',
                              os.path.join(
-                                 settings.BASE_DIR,'filepond_uploads'))
+                                 local_settings.BASE_DIR,'filepond_uploads'))
         LOG.debug('Upload temp directory from top level settings: <%s>'
                   % (upload_tmp))
         
