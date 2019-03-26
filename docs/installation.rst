@@ -43,6 +43,17 @@ variable to your settings file, e.g.::
 	DJANGO_DRF_FILEPOND_UPLOAD_TMP = os.path.join(BASE_DIR, 'filepond-temp-uploads')
 	...
 
+.. note:: It is strongly recommended that you set 
+	``DJANGO_DRF_FILEPOND_UPLOAD_TMP``. If you do not set this variable, the 
+	app will set a default location for the storage of temporary uploads. 
+	This is ``BASE_DIR/filepond_uploads`` where ``BASE_DIR`` is the variable 
+	defined by default in an auto-generated Django settings file pointing to 
+	the top-level directory of your Django project. If your settings do not 
+	contain ``BASE_DIR`` the app will default to storing the 
+	``filepond_uploads`` directory in the ``django-drf-filepond`` app  
+	directory, wherever that is located. Note that this may be within the  
+	``lib`` directory of a virtualenv.
+
 3. Include the app urls into your main url configuration
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
