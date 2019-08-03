@@ -19,7 +19,7 @@ class Migration(migrations.Migration):
             name='TemporaryUpload',
             fields=[
                 ('file_id', models.CharField(max_length=22, primary_key=True, serialize=False, validators=[django.core.validators.MinLengthValidator(22)])),
-                ('file', models.FileField(storage=django.core.files.storage.FileSystemStorage(location=b'/Users/jhc02/LeSC/Projects/Fellowship/Res/Imaging/imaging-genomics-app/backend/ig_backend/uploads/filepond/tmp'), upload_to=b'')),
+                ('file', models.FileField(storage=django.core.files.storage.FileSystemStorage(location=b'/tmp/filepond_uploads'), upload_to=b'')),
                 ('upload_name', models.CharField(max_length=512)),
                 ('uploaded', models.DateTimeField(auto_now_add=True)),
                 ('upload_type', models.CharField(choices=[('F', 'Uploaded file data'), ('U', 'Remote file URL')], max_length=1)),
