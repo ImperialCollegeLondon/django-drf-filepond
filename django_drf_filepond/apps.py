@@ -1,8 +1,10 @@
 from django.apps import AppConfig
 
+import importlib
 import os
 import logging
 import django_drf_filepond.drf_filepond_settings as local_settings
+from django.core.exceptions import ImproperlyConfigured
 
 LOG = logging.getLogger(__name__)
 
@@ -27,6 +29,22 @@ class DjangoDrfFilepondConfig(AppConfig):
             LOG.debug('Filepond app init: Temporary file upload '
                       'directory already exists')
 
+        # See if we're using a local file store or django-storages
+        # If the latter, we create an instance of the storage class
+        # to make sure that it's available and dependencies are installed
+        storage_class = getattr(local_settings, 'STORAGES_BACKEND', None)
+        if storage_class:
+            LOG.info('Using django-storages with backend [%s]'
+                     % storage_class)
+            (modname, clname) = storage_class.rsplit('.', 1)
+            # Either the module import or the getattr to instantiate the 
+            # class will throw an exception if there's a problem 
+            # creating storage backend instance due to missing configuration
+            # or dependencies.
+            mod = importlib.import_module(modname)
+            getattr(mod, clname)()
+            LOG.info('Storage backend [%s] is available...' % storage_class)
+        
         file_store = getattr(local_settings, 'FILE_STORE_PATH', None)
         if file_store:
             if not os.path.exists(file_store):
@@ -36,3 +54,10 @@ class DjangoDrfFilepondConfig(AppConfig):
             else:
                 LOG.debug('Filepond app init: File store path already '
                           'exists')
+        else:
+            if storage_class:
+                raise ImproperlyConfigured(
+                    'A django-storages configuration is provided so you '
+                    'must set the base file storage path for this storage '
+                    'backend using %sFILE_STORE_PATH' 
+                    % local_settings._app_prefix)

@@ -33,7 +33,20 @@ UPLOAD_TMP = getattr(settings, _app_prefix+'UPLOAD_TMP',
 DELETE_UPLOAD_TMP_DIRS = getattr(settings, 
                                  _app_prefix+'DELETE_UPLOAD_TMP_DIRS', True)
 
+# Specifies the django-storages backend to be used. See the list at:
+# https://django-storages.readthedocs.io
+# If this is not set, then the default local filesystem backend is used.
+# If you set this parameter, you also need to set the relevant parameters 
+# for your chosen backend as described in the django-storages documentation.
+STORAGES_BACKEND = getattr(settings, _app_prefix+'STORAGES_BACKEND', None)
+
 # The file storage location used by the top-level application. This needs to 
 # be set if the load endpoint is going to be used to access files that have 
 # been permanently stored after being uploaded as TemporaryUpload objects.
+# If you're using django-storages, this path is the base path to be used
+# on the backend storage of this parameter is ignored.
+# If STORAGES_BACKEND is provided, this MUST be set
+# If you're not using a STORAGES_BACKEND and this is NOT set, you can't use
+# django-drf-filepond's file management and the api.store_upload function 
+# will not be usable - you will need to manage file storage in your code. 
 FILE_STORE_PATH = getattr(settings, _app_prefix+'FILE_STORE_PATH', None)
