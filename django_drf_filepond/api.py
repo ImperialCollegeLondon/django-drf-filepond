@@ -48,10 +48,9 @@ def store_upload(upload_id, destination_file_path):
     
     id_fmt = re.compile('^([%s]){22}$' % (shortuuid.get_alphabet()))
     if not id_fmt.match(upload_id):
-        errorMsg = ('The provided upload ID <%s> is of an invalid format.'
-                    % upload_id) 
-        LOG.error(errorMsg)
-        raise ValueError(errorMsg)
+        LOG.error('The provided upload ID <%s> is of an invalid format.'
+                    % upload_id)
+        raise ValueError('The provided upload ID is of an invalid format.')
     
     if not destination_file_path or destination_file_path == '':
         raise ValueError('No destination file path provided.')
@@ -61,8 +60,18 @@ def store_upload(upload_id, destination_file_path):
     except TemporaryUpload.DoesNotExist:
         raise ValueError('Record for the specified upload_id doesn\'t exist')
 
+    # Before this was updated, passing a path ending in os.sep, i.e. a 
+    # directory name, would ensure that the file was stored in the specified
+    # directory using the name that the file had when it was originally
+    # uploaded.  To ensure consistency with this previous approach to 
+    # handling files, we have to ensure here that if the original path ends
+    # in os.sep and we're using local storage, this is maintained when it
+    # is passed to _store_upload_local
     destination_name = ntpath.basename(destination_file_path)
     destination_path = ntpath.dirname(destination_file_path)
+    if ( (not storage_backend) and (destination_name == '') and
+         (destination_file_path.endswith(os.sep)) ):
+        destination_path += os.sep 
 
     if storage_backend:
         return _store_upload_remote(destination_path, destination_name, tu)
@@ -87,22 +96,20 @@ def _store_upload_local(destination_file_path, destination_file_name,
     if destination_file_path.startswith(os.sep):
         destination_file_path = destination_file_path[1:]
     
-    target_dir = os.path.join(file_path_base, 
-                              os.path.dirname(destination_file_path))
+    target_dir = os.path.join(file_path_base, destination_file_path)
     target_filename = destination_file_name
+    # If not filename provided, assume a directory was provided, get the 
+    # file name from temp_upload and use this
     if not target_filename:
         target_filename = temp_upload.upload_name
-    if destination_file_path.endswith(os.sep):
-        # Assume a directory was provided, get the file name from tu and 
-        # add this to the provided path.
-        destination_file_path += target_filename
+    destination_file_path = os.path.join(destination_file_path, 
+                                         target_filename)
         
-    target_file_path = os.path.join(file_path_base, destination_file_path)
-    
     # Check we're not about to overwrite anything
+    target_file_path = os.path.join(target_dir, target_filename)
     if os.path.exists(target_file_path):
         LOG.error('File with specified name and path <%s> already exists' 
-                  % destination_file_path)
+                  % target_file_path)
         raise FileExistsError('The specified temporary file cannot be stored'
                               ' to the specified location - file exists.')
     

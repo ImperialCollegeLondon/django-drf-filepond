@@ -113,6 +113,8 @@ class ApiTestCase(TestCase):
         su = store_upload(self.upload_id, test_target_filename)
         upload_id = su.upload_id
         su = StoredUpload.objects.get(upload_id=upload_id)
+        LOG.debug('About to check that file path <%s> and stored path <%s> '
+                  'are equal' % (test_target_filename, su.file_path))
         self.assertEqual(test_target_filename, su.file_path, 'File has ' 
                     'been stored with wrong filename in the database.')
         # Check that the file has actually been stored in the correct 
