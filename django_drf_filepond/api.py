@@ -6,7 +6,6 @@
 #               DJANGO_DRF_FILEPOND_FILE_STORE_PATH setting set in your 
 #               application's settings.py file.
 #
-import importlib
 import logging
 import ntpath
 import os
@@ -17,6 +16,11 @@ from django.core.exceptions import ImproperlyConfigured
 import re
 import shortuuid
 from django_drf_filepond.models import TemporaryUpload, StoredUpload
+from django_drf_filepond.storage_utils import _get_storage_backend
+
+storage_backend = _get_storage_backend(
+    getattr(local_settings, 'STORAGES_BACKEND', None))
+
 
 LOG = logging.getLogger(__name__)
 
@@ -155,27 +159,3 @@ def _store_upload_remote(destination_file_path, destination_file_name,
         opened_file.close()
     
     return su
-
-def _get_storage_backend(fq_classname):
-    """
-    Load the specified django-storages storage backend class. This is called
-    regardless of whether a beckend is specified so if fq_classname is not 
-    set, we just return None.
-    
-    fq_classname is a string specifying the fully-qualified class name of 
-    the django-storages backend to use, e.g. 
-        'storages.backends.sftpstorage.SFTPStorage'
-    """
-    if not fq_classname:
-        return None
-
-    (modname, clname) = fq_classname.rsplit('.', 1)
-    # A test import of the backend storage class should have been undertaken
-    # at app startup in django_drf_filepond.apps.ready so any failure
-    # importing the backend should have been picked up then. 
-    mod = importlib.import_module(modname)
-    getattr(mod, clname)()
-    LOG.info('Storage backend instance [%s] created...' % fq_classname)
-
-storage_backend = _get_storage_backend(
-    getattr(local_settings, 'STORAGES_BACKEND', None))
