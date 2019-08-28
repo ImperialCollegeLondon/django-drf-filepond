@@ -41,7 +41,7 @@ In ``${TUTORIAL_DIR}``, create a file named ``requirements.txt`` containing
 the following content::
 
 	Django>=1.11
-	django-drf-filepond==0.0.2
+	django-drf-filepond
 
 
 Now create a *virtualenv* in ``${TUTORIAL_DIR}``:

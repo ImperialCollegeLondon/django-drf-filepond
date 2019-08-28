@@ -10,8 +10,9 @@ or add it to your list of dependencies in a *requirements.txt* file.
 Configuration
 -------------
 
-There are three key configuration updates to make within your Django 
-application to set up django-drf-filepond:
+There are three required configuration updates to make within your Django 
+application to set up django-drf-filepond. A number of additional 
+configuration options may be specified if you're using optional features:
 
 1. Add the app to INSTALLED_APPS:
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -73,8 +74,35 @@ endpoint used in your path statement above. For example if the first
 parameter to ``url`` is ``^fp/`` then the endpoint for the ``process`` 
 function will be ``/fp/process/``.
 
-(Optional) 4. Set the permanent file store location
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(Optional) 4. File storage configuration
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Initially, uploaded files are stored in a temporary staging area (the 
+location you set in item 2 above, with the ``DJANGO_DRF_FILEPOND_UPLOAD_TMP`` 
+parameter. At this point, an uploaded file is still shown in the filepond UI  
+on the client and the user can choose to cancel the upload resulting in the  
+file being deleted from temporary storage and the upload being cancelled.
+
+Once the user confirms the file upload(s), e.g. by submitting the form in 
+which the filepond component is embedded, any temporary uploads need to be  
+moved to permanent storage. You can handle this yourself by interacting 
+directly with django-drf-filepond's ``TemporaryUpload`` model to find and   
+store the uploaded files, or you can use django-drf-filepond's API to store  
+files and have the library assist you in managing them. Using this approach,  
+you can also make use of filepond's ``load`` method, this is not possible if 
+you manage file storage independently of django-drf-filepond.  
+
+There are two different options for file storage:
+
+- Use a location on a local filesystem on the host server for permanent file storage
+   
+- Use a remote file storage backend via the `django-storages <https://django-storages.readthedocs.io/en/latest>`_ library 
+
+Section 4.1 details configuration for using the local filesystem for 
+storage of filepond uploads.
+
+Section 4.2 details configuration for using the django-storages library to 
+enable remote storage of filepond uploads.
 
 If you wish to let django-drf-filepond manage the permanent storage of file 
 uploads (note that this is required if you wish to use the load method), 
@@ -85,6 +113,15 @@ settings file, e.g.::
 	DJANGO_DRF_FILEPOND_FILE_STORE_PATH = os.path.join(BASE_DIR, 'stored_uploads')
 	...
 
+(Optional) 4.1 Storage of filepond uploads using the local file system
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Information on storage of file uploads using the local filesystem
+
+(Optional) 4.2 Remote storage of filepond uploads via django-storages
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Information on storage of file uploads using django-storages
 
 Advanced Configuration Options
 ------------------------------
