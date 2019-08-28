@@ -160,8 +160,7 @@ def _store_upload_remote(destination_file_path, destination_file_name,
     su = None
     destination_file = os.path.join(destination_file_path, target_filename)
     try:
-        opened_file = temp_upload.file.open()
-        storage_backend.save(destination_file, opened_file)
+        storage_backend.save(destination_file, temp_upload.file)
         su = StoredUpload(upload_id=temp_upload.upload_id, 
                   file_path=destination_file, 
                   uploaded=temp_upload.uploaded)
@@ -172,7 +171,5 @@ def _store_upload_remote(destination_file_path, destination_file_name,
                     % str(e))
         LOG.error(errorMsg)
         raise e
-    finally:
-        opened_file.close()
     
     return su
