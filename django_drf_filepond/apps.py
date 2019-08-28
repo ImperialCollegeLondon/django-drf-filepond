@@ -44,6 +44,11 @@ class DjangoDrfFilepondConfig(AppConfig):
             mod = importlib.import_module(modname)
             getattr(mod, clname)()
             LOG.info('Storage backend [%s] is available...' % storage_class)
+        else:
+            LOG.info('App init: no django-storages backend configured, '
+                     'using default (local) storage backend if set, '
+                     'otherwise you need to manage file storage '
+                     'independently of this app.')
         
         file_store = getattr(local_settings, 'FILE_STORE_PATH', None)
         if file_store:

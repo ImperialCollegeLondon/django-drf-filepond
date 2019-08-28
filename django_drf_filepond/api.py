@@ -18,11 +18,22 @@ import shortuuid
 from django_drf_filepond.models import TemporaryUpload, StoredUpload
 from django_drf_filepond.storage_utils import _get_storage_backend
 
-storage_backend = _get_storage_backend(
-    getattr(local_settings, 'STORAGES_BACKEND', None))
-
+# TODO: Need to refactor this into a class and put the initialisation of
+# the storage backend into the init.
+storage_backend_initialised = False
+storage_backend = None
 
 LOG = logging.getLogger(__name__)
+
+def _init_storage_backend():
+    global storage_backend_initialised
+    global storage_backend
+    
+    storage_module_name = getattr(local_settings, 'STORAGES_BACKEND', None)
+    LOG.debug('Initialising storage backend with storage module name [%s]'
+              % storage_module_name)
+    storage_backend = _get_storage_backend(storage_module_name)
+    storage_backend_initialised = True
 
 # Store the temporary upload represented by upload_id to the specified  
 # destination_file_path under the defined file store location as specified by 
@@ -73,6 +84,12 @@ def store_upload(upload_id, destination_file_path):
     # is passed to _store_upload_local
     destination_name = ntpath.basename(destination_file_path)
     destination_path = ntpath.dirname(destination_file_path)
+    
+    # TODO: If the storage backend is not initialised, init now - this will 
+    # be removed out when this module is refactored into a class.
+    if not storage_backend_initialised:
+        _init_storage_backend()
+    
     if ( (not storage_backend) and (destination_name == '') and
          (destination_file_path.endswith(os.sep)) ):
         destination_path += os.sep 
