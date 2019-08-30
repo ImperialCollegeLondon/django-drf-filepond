@@ -17,6 +17,8 @@ import re
 import shortuuid
 from django_drf_filepond.models import TemporaryUpload, StoredUpload
 from django_drf_filepond.storage_utils import _get_storage_backend
+from django_drf_filepond.exceptions import ConfigurationError
+from io import BytesIO
 
 # TODO: Need to refactor this into a class and put the initialisation of
 # the storage backend into the init.
@@ -86,7 +88,7 @@ def store_upload(upload_id, destination_file_path):
     destination_path = ntpath.dirname(destination_file_path)
 
     # TODO: If the storage backend is not initialised, init now - this will
-    # be removed out when this module is refactored into a class.
+    # be removed when this module is refactored into a class.
     if not storage_backend_initialised:
         _init_storage_backend()
 
@@ -175,3 +177,118 @@ def _store_upload_remote(destination_file_path, destination_file_name,
         raise e
 
     return su
+
+
+def get_stored_upload(upload_id):
+    """
+    Get an upload that has previously been stored using the store_upload
+    function.
+
+    upload_id: This function takes a 22-character unique ID assigned to the
+    original upload of the requested file.
+    """
+    # If the parameter matched the upload ID format, we assume that it
+    # must be an upload ID and proceed accordingly. If the lookup of the
+    # record fails, then we have another go assuming a filename was
+    # instead provided.
+
+    # NOTE: The API doesn't officially provide support for requesting stored
+    # uploads by filename. This is retained here for backward compatibility
+    # but it is DEPRECATED and will be removed in a future release.
+    param_filename = False
+
+    upload_id_fmt = re.compile('^([%s]){22}$'
+                               % (shortuuid.get_alphabet()))
+
+    if not upload_id_fmt.match(upload_id):
+        param_filename = True
+        LOG.debug('The provided string doesn\'t seem to be an '
+                  'upload ID. Assuming it is a filename/path.')
+
+    if not param_filename:
+        try:
+            su = StoredUpload.objects.get(upload_id=upload_id)
+        except StoredUpload.DoesNotExist:
+            LOG.debug('A StoredUpload with the provided ID doesn\'t '
+                      'exist. Assuming this could be a filename.')
+            param_filename = True
+
+    if param_filename:
+        # Try and lookup a StoredUpload record with the specified id
+        # as the file path
+        try:
+            su = StoredUpload.objects.get(file_path=upload_id)
+        except StoredUpload.DoesNotExist as e:
+            LOG.debug('A StoredUpload with the provided file path '
+                      'doesn\'t exist. Re-raising error')
+            raise e
+
+    return su
+
+
+def get_stored_upload_file_data(stored_upload):
+    """
+    Given a StoredUpload object, this function gets and returns the data of
+    the file associated with the StoredUpload instance.
+
+    This function provides an abstraction over the storage backend, accessing
+    the file data regardless of whether the file is stored on the local
+    filesystem or on some remote storage service, e.g. Amazon S3. Supported
+    storage backends are those supported by the django-storages library.
+
+    Returns a tuple (filename, data_bytes_io).
+        filename is a string containing the name of the stored file
+        data_bytes_io is a file-like BytesIO object containing the file data
+    """
+    if storage_backend:
+        # TODO: If the storage backend is not initialised, init now - this
+        # will be removed when this module is refactored into a class.
+        if not storage_backend_initialised:
+            _init_storage_backend()
+
+        LOG.debug('get_stored_upload_file_data: Using a remote storage '
+                  'service: [%s]' % (storage_backend.__name__))
+    else:
+        LOG.debug('get_stored_upload_file_data: Using local storage backend.')
+        if ((not hasattr(local_settings, 'FILE_STORE_PATH'))
+                or
+                (not os.path.exists(local_settings.FILE_STORE_PATH))
+                or
+                (not os.path.isdir(local_settings.FILE_STORE_PATH))):
+            raise ConfigurationError('The file upload settings are not '
+                                     'configured correctly.')
+
+    file_path_base = local_settings.FILE_STORE_PATH
+    if not file_path_base:
+        file_path_base = ''
+
+    # See if the stored file with the path specified in su exists
+    # in the file store location
+    bytes_io = None
+    file_path = os.path.join(file_path_base, stored_upload.file_path)
+    if storage_backend:
+        if not storage_backend.exists(file_path):
+            LOG.error('File [%s] for upload_id [%s] not found on remote '
+                      'file store' % (file_path, stored_upload.upload_id))
+            raise FileNotFoundError('File [%s] for upload_id [%s] not found '
+                                    'on remote file store.' % file_path)
+        with storage_backend.open(file_path, 'r') as remote_file:
+            bytes_io = BytesIO(remote_file.read())
+    else:
+        if ((not os.path.exists(file_path)) or
+                (not os.path.isfile(file_path))):
+            LOG.error('File [%s] for upload_id [%s] not found on local disk'
+                      % (file_path, stored_upload.upload_id))
+            raise FileNotFoundError('File [%s] not found on local disk'
+                                    % file_path)
+
+        # We now know that the file exists locally and is not a directory
+        try:
+            with open(file_path, 'rb') as f:
+                bytes_io = BytesIO(f.read())
+        except IOError as e:
+            LOG.error('Error reading requested file: %s' % str(e))
+            raise e
+
+    filename = os.path.basename(stored_upload.file_path)
+    return (filename, bytes_io)

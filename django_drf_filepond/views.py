@@ -24,6 +24,9 @@ import re
 import os
 import mimetypes
 from django.http.response import HttpResponse
+from django_drf_filepond.api import get_stored_upload,\
+    get_stored_upload_file_data
+from django_drf_filepond.exceptions import ConfigurationError
 
 LOG = logging.getLogger(__name__)
 
@@ -159,94 +162,55 @@ class RevertView(APIView):
         
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+
 class LoadView(APIView):
-    
-    # Expect the upload ID to be provided with the 'id' parameter
-    # This may be either an upload_id that is stored in the StoredUpload
-    # table or it may be the path to a file (relative to the fixed upload
-    # directory specified by the DJANGO_DRF_FILEPOND_FILE_STORE_PATH 
-    # setting parameter). 
+    """
+    Expect the upload ID to be provided with the 'id' parameter
+    This may be either an upload_id that is stored in the StoredUpload
+    table or it may be the path to a file (relative to the fixed upload
+    directory specified by the DJANGO_DRF_FILEPOND_FILE_STORE_PATH
+    setting parameter).
+    """
     def get(self, request):
         LOG.debug('Filepond API: Load view GET called...')
-        
-        if ((not hasattr(local_settings, 'FILE_STORE_PATH')) 
-            or 
-            (not os.path.exists(local_settings.FILE_STORE_PATH))
-            or
-            (not os.path.isdir(local_settings.FILE_STORE_PATH))
-        ):
-            return Response('The file upload settings are not configured '
-                            'correctly.', 
-                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-        file_path_base = local_settings.FILE_STORE_PATH
-        
+
         if LOAD_RESTORE_PARAM_NAME not in request.GET:
-            return Response('A required parameter is missing.', 
+            return Response('A required parameter is missing.',
                             status=status.HTTP_400_BAD_REQUEST)
-        
-        param_filename = False
+
         upload_id = request.GET[LOAD_RESTORE_PARAM_NAME]
-        
+
         if (not upload_id) or (upload_id == ''):
             return Response('An invalid ID has been provided.',
                             status=status.HTTP_400_BAD_REQUEST)
-        
-        upload_id_fmt = re.compile('^([%s]){22}$' 
-                                   % (shortuuid.get_alphabet()))
-        
-        su = None
-        if not upload_id_fmt.match(upload_id):
-            param_filename = True
-            LOG.debug('The provided string doesn\'t seem to be an '
-                      'upload ID. Assuming it is a filename/path.')
-        else:
-            # The provided id could be an upload_id so we can check here.
-            try:
-                su = StoredUpload.objects.get(upload_id=upload_id)
-            except StoredUpload.DoesNotExist:
-                LOG.debug('A StoredUpload with the provided ID doesn\'t '
-                          'exist. Assuming this could be a filename.')
-                param_filename = True
-        
-        if param_filename:
-            # Try and lookup a StoredUpload record with the specified id
-            # as the file path
-            try:
-                su = StoredUpload.objects.get(file_path=upload_id)
-            except StoredUpload.DoesNotExist:
-                LOG.debug('A StoredUpload with the provided file path '
-                          'doesn\'t exist.')
-                return Response('Not found', 
-                                status=status.HTTP_404_NOT_FOUND)
-        
-        # su is now the StoredUpload record for the requested file
-        
-        # See if the stored file with the path specified in su exists 
-        # in the file store location
-        file_path = os.path.join(file_path_base, su.file_path)
-        if ((not os.path.exists(file_path)) or 
-            (not os.path.isfile(file_path))):
-            return Response('Error reading file...',
-                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-        # We now know that the file exists and is a file not a directory
+
         try:
-            with open(file_path, 'rb') as f:
-                data = f.read() 
-        except IOError as e:
-            LOG.error('Error reading requested file: %s' % str(e))
-            return Response('Error reading file...',
+            su = get_stored_upload(upload_id)
+        except StoredUpload.DoesNotExist as e:
+            LOG.error('StoredUpload with ID [%s] not found: [%s]'
+                      % (upload_id, str(e)))
+            return Response('Not found', status=status.HTTP_404_NOT_FOUND)
+
+        # su is now the StoredUpload record for the requested file
+        try:
+            (filename, data_bytes_io) = get_stored_upload_file_data(su)
+        except ConfigurationError as e:
+            LOG.error('Error getting file upload: [%s]' % str(e))
+            return Response('The file upload settings are not '
+                            'configured correctly.',
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-        filename = os.path.basename(su.file_path)
+        except (FileNotFoundError, IOError):
+            return Response('Error reading local file...',
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
         ct = _get_content_type(filename)
-        
-        response = HttpResponse(data, content_type=ct)
-        response['Content-Disposition'] = ('inline; filename=%s' % 
+
+        response = HttpResponse(data_bytes_io.read(), content_type=ct)
+        response['Content-Disposition'] = ('inline; filename=%s' %
                                            filename)
-        
+
         return response
+
 
 class RestoreView(APIView):
     
