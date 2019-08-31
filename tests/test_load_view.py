@@ -9,6 +9,7 @@ import django_drf_filepond.drf_filepond_settings as local_settings
 import cgi
 import os
 import shutil
+import django_drf_filepond
 
 LOG = logging.getLogger(__name__)
 
@@ -73,6 +74,8 @@ class LoadTestCase(TestCase):
         LOG.debug('File store path in %s setup: %s' 
                   % (__name__, file_store_path))
         cls.FILE_STORE_PATH = file_store_path
+        local_settings.STORAGES_BACKEND = None
+        django_drf_filepond.api.storage_backend = None
 
     def setUp(self):
         # Set up an initial file upload
@@ -126,7 +129,7 @@ class LoadTestCase(TestCase):
     def test_load_id_file_notfound_error(self):
         response = self.client.get((reverse('load') +
                                     ('?id=%s' % self.upload_id)))
-        self.assertContains(response, 'Error reading file...', 
+        self.assertContains(response, 'Error reading local file...', 
                             status_code=500)
     
     def test_load_uploadid_successful_request(self):
