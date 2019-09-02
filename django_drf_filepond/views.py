@@ -32,6 +32,13 @@ LOG = logging.getLogger(__name__)
 
 LOAD_RESTORE_PARAM_NAME = 'id'
 
+
+# There's no built in FileNotFoundError in Python 2
+try:
+    FileNotFoundError
+except NameError:
+    FileNotFoundError = IOError
+
 def _get_file_id():
     file_id = shortuuid.uuid()
     return file_id

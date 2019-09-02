@@ -97,7 +97,7 @@ class FetchTestCase(TestCase):
                                     ('?target=%s' % test_url)))
         self.assertContains(
             response,
-            'Unable to access the requested remote file headers.',
+            'Unable to access the requested remote file headers',
             status_code=500)
 
     @httpretty.activate
