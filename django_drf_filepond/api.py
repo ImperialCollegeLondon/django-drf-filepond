@@ -247,7 +247,7 @@ def get_stored_upload_file_data(stored_upload):
             _init_storage_backend()
 
         LOG.debug('get_stored_upload_file_data: Using a remote storage '
-                  'service: [%s]' % (storage_backend.__name__))
+                  'service: [%s]' % (type(storage_backend).__name__))
     else:
         LOG.debug('get_stored_upload_file_data: Using local storage backend.')
         if ((not hasattr(local_settings, 'FILE_STORE_PATH'))

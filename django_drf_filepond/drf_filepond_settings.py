@@ -44,7 +44,7 @@ STORAGES_BACKEND = getattr(settings, _app_prefix+'STORAGES_BACKEND', None)
 # be set if the load endpoint is going to be used to access files that have 
 # been permanently stored after being uploaded as TemporaryUpload objects.
 # If you're using django-storages, this path is the base path to be used
-# on the backend storage of this parameter is ignored.
+# on the backend storage.
 # If STORAGES_BACKEND is provided, this MUST be set
 # If you're not using a STORAGES_BACKEND and this is NOT set, you can't use
 # django-drf-filepond's file management and the api.store_upload function 

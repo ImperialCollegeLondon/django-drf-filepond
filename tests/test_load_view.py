@@ -50,23 +50,24 @@ LOG = logging.getLogger(__name__)
 class LoadTestCase(TestCase):
 
     def _check_file_response(self, response, filename, file_content):
-        self.assertEqual(response.status_code, 200, 
+        self.assertEqual(response.status_code, 200,
                          'An invalid response code has been received.')
-        
+
         # Check the Content-Disposition header is valid
         self.assertTrue('Content-Disposition' in response,
                         ('Response does not contain a required '
                          'Content-Disposition header.'))
         cdisp = cgi.parse_header(response['Content-Disposition'])
-        self.assertTrue('filename' in cdisp[1],('Content-Disposition'
-                         ' header doesn\'t contain filename parameter'))
+        self.assertTrue('filename' in cdisp[1], ('Content-Disposition'
+                        ' header doesn\'t contain filename parameter'))
         fname = cdisp[1]['filename']
         self.assertEqual(filename, fname, ('Returned filename is not '
-                                'equal to the provided filename value.'))
-         
-        self.assertEqual(response.content.decode(), file_content,
-                         'The response data is invalid.')
+                         'equal to the provided filename value.'))
 
+        test_file_content = file_content if type(file_content) == str \
+            else file_content.decode()
+        self.assertEqual(response.content.decode(), test_file_content,
+                         'The response data is invalid.')
 
     @classmethod
     def setUpTestData(cls):
