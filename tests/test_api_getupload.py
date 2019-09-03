@@ -26,6 +26,12 @@ try:
 except ImportError:
     from mock import patch
 
+# There's no built in FileNotFoundError in Python 2
+try:
+    FileNotFoundError
+except NameError:
+    FileNotFoundError = IOError
+
 LOG = logging.getLogger(__name__)
 
 

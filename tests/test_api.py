@@ -25,6 +25,17 @@ import django_drf_filepond.drf_filepond_settings as local_settings
 from django.core.exceptions import ImproperlyConfigured
 from django_drf_filepond.api import _store_upload_local
 
+# There's no built in FileNotFoundError, FileExistsError in Python 2
+try:
+    FileNotFoundError
+except NameError:
+    FileNotFoundError = IOError
+
+try:
+    FileExistsError
+except NameError:
+    FileExistsError = OSError
+
 LOG = logging.getLogger(__name__)
 
 

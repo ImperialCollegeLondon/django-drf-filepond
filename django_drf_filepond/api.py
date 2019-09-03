@@ -27,11 +27,16 @@ storage_backend = None
 
 LOG = logging.getLogger(__name__)
 
-# There's no built in FileNotFoundError in Python 2
+# There's no built in FileNotFoundError, FileExistsError in Python 2
 try:
     FileNotFoundError
 except NameError:
     FileNotFoundError = IOError
+
+try:
+    FileExistsError
+except NameError:
+    FileExistsError = OSError
 
 
 def _init_storage_backend():
