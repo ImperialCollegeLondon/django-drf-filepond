@@ -100,7 +100,10 @@ def store_upload(upload_id, destination_file_path):
 
     if ((not storage_backend) and (destination_name == '') and
             (destination_file_path.endswith(os.sep))):
-        destination_path += os.sep
+        # In some cases we'll enter this block but destination path will
+        # already end in a '/' so check before updating
+        if not destination_path.endswith('/'):
+            destination_path += os.sep
 
     if storage_backend:
         return _store_upload_remote(destination_path, destination_name, tu)
@@ -112,6 +115,8 @@ def _store_upload_local(destination_file_path, destination_file_name,
                         temp_upload):
     file_path_base = local_settings.FILE_STORE_PATH
 
+    # If called via store_upload, this has already been checked but in
+    # case this is called directly, double check that the store path is set
     if not file_path_base or file_path_base == '':
         raise ValueError('The FILE_STORE_PATH is not set to a directory.')
 
@@ -256,10 +261,9 @@ def get_stored_upload_file_data(stored_upload):
                   'service: [%s]' % (type(storage_backend).__name__))
     else:
         LOG.debug('get_stored_upload_file_data: Using local storage backend.')
-        if ((not hasattr(local_settings, 'FILE_STORE_PATH'))
-                or
-                (not os.path.exists(local_settings.FILE_STORE_PATH))
-                or
+        if ((not hasattr(local_settings, 'FILE_STORE_PATH')) or
+                (not local_settings.FILE_STORE_PATH) or
+                (not os.path.exists(local_settings.FILE_STORE_PATH)) or
                 (not os.path.isdir(local_settings.FILE_STORE_PATH))):
             raise ConfigurationError('The file upload settings are not '
                                      'configured correctly.')
@@ -276,8 +280,9 @@ def get_stored_upload_file_data(stored_upload):
         if not storage_backend.exists(file_path):
             LOG.error('File [%s] for upload_id [%s] not found on remote '
                       'file store' % (file_path, stored_upload.upload_id))
-            raise FileNotFoundError('File [%s] for upload_id [%s] not found '
-                                    'on remote file store.' % file_path)
+            raise FileNotFoundError(
+                'File [%s] for upload_id [%s] not found on remote file '
+                'store.' % (file_path, stored_upload.upload_id))
         with storage_backend.open(file_path, 'r') as remote_file:
             bytes_io = BytesIO(remote_file.read())
     else:

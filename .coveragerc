@@ -1,3 +1,6 @@
 [run]
 omit = django_drf_filepond/__init__.py
        django_drf_filepond/apps.py
+
+[report]
+show_missing = True

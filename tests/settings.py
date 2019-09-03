@@ -147,5 +147,9 @@ LOGGING = {
             'handlers': ['console'],
             'level': 'DEBUG',
         },
+        'tests': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+        },
     },
 }
