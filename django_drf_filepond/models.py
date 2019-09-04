@@ -9,6 +9,7 @@ from django.core.validators import MinLengthValidator
 from django.db import models
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
+from django.utils.deconstruct import deconstructible
 
 import django_drf_filepond.drf_filepond_settings as local_settings
 
@@ -16,9 +17,28 @@ import django_drf_filepond.drf_filepond_settings as local_settings
 FILEPOND_UPLOAD_TMP = getattr(local_settings, 'UPLOAD_TMP',
                               os.path.join(
                                   local_settings.BASE_DIR,'filepond_uploads'))
-storage = FileSystemStorage(location=FILEPOND_UPLOAD_TMP)
+
+
+@deconstructible
+class FilePondUploadSystemStorage(FileSystemStorage):
+    """Custom storage class, otherwise Django assumes all files are
+    uploads headed to `MEDIA_ROOT`.
+
+    Subclassing necessary to avoid messing up with migrations (#13).
+    """
+
+    def __init__(self, **kwargs):
+        kwargs.update({
+            'location': FILEPOND_UPLOAD_TMP,
+        })
+        super(FilePondUploadSystemStorage, self).__init__(**kwargs)
+
+
+storage = FilePondUploadSystemStorage()
+
 
 LOG = logging.getLogger(__name__)
+
 
 def get_upload_path(instance, filename):
     return os.path.join(instance.upload_id, filename)

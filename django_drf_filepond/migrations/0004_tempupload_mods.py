@@ -16,7 +16,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='temporaryupload',
             name='file',
-            field=models.FileField(storage=django.core.files.storage.FileSystemStorage(location='/tmp/filepond_uploads'), upload_to=django_drf_filepond.models.get_upload_path),
+            field=models.FileField(storage=django_drf_filepond.models.FilePondUploadSystemStorage(), upload_to=django_drf_filepond.models.get_upload_path),
         ),
         migrations.AlterField(
             model_name='temporaryupload',
