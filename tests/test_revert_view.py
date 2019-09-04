@@ -9,6 +9,13 @@ from django.urls import reverse
 from django_drf_filepond import views
 from django_drf_filepond.models import TemporaryUpload, storage
 import django_drf_filepond.drf_filepond_settings as local_settings
+from django_drf_filepond.views import RevertView
+
+# Python 2/3 support
+try:
+    from unittest.mock import MagicMock
+except ImportError:
+    from mock import MagicMock
 
 LOG = logging.getLogger(__name__)
 
@@ -23,13 +30,15 @@ class RevertTestCase(TestCase):
         self.file_id = views._get_file_id()
         self.upload_id = views._get_file_id()
         test_file = SimpleUploadedFile(self.file_id, data.read())
-        TemporaryUpload.objects.create(
+        self.tu = TemporaryUpload.objects.create(
             upload_id=self.upload_id,
             file_id=self.file_id, file=test_file,
             upload_name='testfile.txt',
             upload_type=TemporaryUpload.FILE_DATA)
+        self.tu.save()
 
     def tearDown(self):
+        self.tu.delete()
         # Check that temp files in the storage directory have been removed
         upload_dir_to_check = os.path.join(storage.location, self.upload_id)
         upload_file_to_check = os.path.join(upload_dir_to_check, self.file_id)
@@ -79,6 +88,20 @@ class RevertTestCase(TestCase):
         self.assertFalse(os.path.exists(file_path),
                          'The test file wasn\'t removed.')
 
+    def test_revert_invalidid(self):
+        response = self.client.delete(reverse('revert'),
+                                      data='INVALIDID',
+                                      content_type='text/plain')
+        self.assertContains(response, 'The provided data is invalid.',
+                            status_code=400)
+
+    def test_revert_missing_temp_upload(self):
+        response = self.client.delete(reverse('revert'),
+                                      data='aaaaaaaaaaaaaaaaaaaaaa',
+                                      content_type='text/plain')
+        self.assertContains(response, 'The specified file does not exist.',
+                            status_code=404)
+
     def test_revert_no_delete_dir(self):
         local_settings.DELETE_UPLOAD_TMP_DIRS = False
         # Check that our record is in the database
@@ -100,3 +123,33 @@ class RevertTestCase(TestCase):
                          'The test file wasn\'t removed.')
         self.assertTrue(os.path.exists(os.path.dirname(file_path)),
                         'The test file temp dir was unexpectedly removed.')
+
+    def test_revert_delete_byte_data(self):
+        upload_id = self.upload_id
+        request = MagicMock()
+        request.data = upload_id.encode()
+        rv = RevertView()
+        response = rv.delete(request)
+        # Need to set content rendered to True so that we can access status
+        response._is_rendered = True
+        self.assertEqual(response.status_code, 204,
+                         ('Expected response code 204 from delete, got [%s]'
+                          % response.status_code))
+        self.assertEqual(response.content, b'',
+                         ('Expected empty response from delete, got [%s]'
+                          % response.content))
+
+    def test_revert_delete_string_data(self):
+        upload_id = self.upload_id
+        request = MagicMock()
+        request.data = str(upload_id)
+        rv = RevertView()
+        response = rv.delete(request)
+        # Need to set content rendered to True so that we can access status
+        response._is_rendered = True
+        self.assertEqual(response.status_code, 204,
+                         ('Expected response code 204 from delete, got [%s]'
+                          % response.status_code))
+        self.assertEqual(response.content, b'',
+                         ('Expected empty response from delete, got [%s]'
+                          % response.content))

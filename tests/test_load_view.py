@@ -183,6 +183,20 @@ class LoadTestCase(TestCase):
         self._check_file_response(response, self.test_filename,
                                   self.file_content)
 
+    def test_load_filename_invalid_filestore_setting(self):
+        su = StoredUpload.objects.get(upload_id=self.upload_id)
+        fspath = local_settings.FILE_STORE_PATH
+        local_settings.FILE_STORE_PATH = None
+        try:
+            response = self.client.get((reverse('load') + '?id=%s'
+                                        % su.upload_id))
+            self.assertContains(
+                response,
+                'The file upload settings are not configured correctly.',
+                status_code=500)
+        finally:
+            local_settings.FILE_STORE_PATH = fspath
+
     def tearDown(self):
         upload_tmp_base = getattr(local_settings, 'UPLOAD_TMP', None)
         filestore_base = getattr(local_settings, 'FILE_STORE_PATH', None)

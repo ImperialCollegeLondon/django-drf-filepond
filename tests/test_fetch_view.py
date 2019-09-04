@@ -1,15 +1,25 @@
+import cgi
 import logging
+import os
 
 from django.test.testcases import TestCase
 from django.urls import reverse
 from httpretty import register_uri
 import httpretty
 import requests
-import cgi
-import os
+from requests.exceptions import ConnectionError
+from rest_framework.exceptions import NotFound
 
 from django_drf_filepond import drf_filepond_settings
 from django_drf_filepond.models import TemporaryUpload
+from django_drf_filepond.views import FetchView
+from rest_framework.response import Response
+
+# Python 2/3 support
+try:
+    from unittest.mock import patch, MagicMock
+except ImportError:
+    from mock import patch, MagicMock
 
 LOG = logging.getLogger(__name__)
 
@@ -64,6 +74,37 @@ LOG = logging.getLogger(__name__)
 #     get back headers containing the file metadata, including an auto-
 #     generated 22-character filename, and that the file is stored on the
 #     server.
+#
+# test_fetch_process_req_filename_from_contentdisposition: Test the fetch
+#    class's _process_request function to ensure that a filename stored in
+#    a response's Content-Disposition header is correctly used.
+#
+# test_fetch_process_req_connection_error_get: Check that a connection error
+#    is correctly handled when requests.get is called in _process_request.
+#    In theory, this shouldn't occur since requests.head is called first and
+#    it's difficult to see where head may succeed and get fail straight after
+#    but testing this case for completeness.
+#
+# test_fetch_head_response_object_returned: When fetch receives a HEAD
+#    request, if _process_request returns a response object (in the case of
+#    an error occurring), test that this is correctly returned without
+#    further post-processing.
+#
+# test_fetch_head_response_unexpected_return_type: When fetch receives a
+#    HEAD request, it calls _process_request and expects a tuple or Response
+#    object back. Check that an unexpected response type is handled and
+#    results in a ValueError.
+#
+# test_fetch_get_response_object_returned: When fetch receives a GET request,
+#    if _process_request returns a response object (in the case of an error
+#    occurring), test that this is correctly returned without further
+#    post-processing.
+#
+# test_fetch_get_response_unexpected_return_type: When fetch receives a GET
+#    request, it calls _process_request and expects a tuple or Response
+#    object back. Check that an unexpected response type is handled and
+#    results in a ValueError.
+#
 class FetchTestCase(TestCase):
 
     def test_fetch_incorrect_param(self):
@@ -326,3 +367,90 @@ class FetchTestCase(TestCase):
             LOG.error('Couldn\'t proceed with file deleting since the '
                       'response received was not the right length (22) '
                       'or the required directory doesn\'t exist')
+
+    def test_fetch_process_req_filename_from_contentdisposition(self):
+        patcher_head = patch('requests.head')
+        patcher_get = patch('requests.get')
+        patcher_head.start()
+        patcher_get.start()
+        self.addCleanup(patcher_head.stop)
+        self.addCleanup(patcher_get.stop)
+        requests.get.return_value.__enter__.return_value.headers = {
+            'Content-Disposition': 'filename=cd_test_file.txt'
+        }
+        (requests.get.return_value.__enter__.return_value.
+            iter_content.return_value) = [b'Some test file content...']
+        mock_head_resp = MagicMock()
+        mock_head_resp.headers = {'Content-Type': 'text/plain'}
+        mock_head_resp.status_code = 200
+        requests.head.return_value = mock_head_resp
+        mock_req = MagicMock()
+        mock_req.query_params = {'target': 'http://localhost/test'}
+        fv = FetchView()
+        result = fv._process_request(mock_req)
+        self.assertTrue((type(result) == tuple) and (len(result) == 4),
+                        'The return type was not a tuple of the right length!')
+        self.assertTrue(
+            result[2] == 'cd_test_file.txt',
+            ('File name cd_test_file.txt was not correctly extracted from '
+             'the request, got [%s]' % result[2]))
+
+    def test_fetch_process_req_connection_error_get(self):
+        patcher_head = patch('requests.head')
+        patcher_get = patch('requests.get')
+        patcher_head.start()
+        patcher_get.start()
+        self.addCleanup(patcher_head.stop)
+        self.addCleanup(patcher_get.stop)
+        mock_head_resp = MagicMock()
+        mock_head_resp.headers = {'Content-Type': 'text/plain'}
+        mock_head_resp.status_code = 200
+        requests.head.return_value = mock_head_resp
+        requests.get.side_effect = ConnectionError('test_file')
+        mock_req = MagicMock()
+        mock_req.query_params = {'target': 'http://localhost/test'}
+        fv = FetchView()
+        with self.assertRaisesMessage(
+                NotFound,
+                'Unable to access the requested remote file: test_file'):
+            fv._process_request(mock_req)
+
+    def test_fetch_head_response_object_returned(self):
+        patcher = patch('django_drf_filepond.views.FetchView._process_request')
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        FetchView._process_request.return_value = Response(data='test data')
+        response = self.client.head((reverse('fetch') +
+                                    ('?target=/test_target')))
+        self.assertEqual(response.data, 'test data', 'Fetch HEAD has not '
+                         'returned the expected response object.')
+
+    def test_fetch_head_response_unexpected_return_type(self):
+        patcher = patch('django_drf_filepond.views.FetchView._process_request')
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        FetchView._process_request.return_value = {}
+        with self.assertRaisesMessage(
+                ValueError,
+                'process_request result is of an unexpected type'):
+            self.client.head((reverse('fetch') + ('?target=/test_target')))
+
+    def test_fetch_get_response_object_returned(self):
+        patcher = patch('django_drf_filepond.views.FetchView._process_request')
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        FetchView._process_request.return_value = Response(data='test data')
+        response = self.client.get((reverse('fetch') +
+                                    ('?target=/test_target')))
+        self.assertEqual(response.data, 'test data', 'Fetch GET has not '
+                         'returned the expected response object.')
+
+    def test_fetch_get_response_unexpected_return_type(self):
+        patcher = patch('django_drf_filepond.views.FetchView._process_request')
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        FetchView._process_request.return_value = {}
+        with self.assertRaisesMessage(
+                ValueError,
+                'process_request result is of an unexpected type'):
+            self.client.get((reverse('fetch') + ('?target=/test_target')))
