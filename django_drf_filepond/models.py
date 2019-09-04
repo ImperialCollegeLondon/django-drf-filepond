@@ -21,10 +21,15 @@ FILEPOND_UPLOAD_TMP = getattr(local_settings, 'UPLOAD_TMP',
 
 @deconstructible
 class FilePondUploadSystemStorage(FileSystemStorage):
-    """Custom storage class, otherwise Django assumes all files are
-    uploads headed to `MEDIA_ROOT`.
+    """
+    Subclass FileSystemStorage to prevent creation of new migrations when
+    using a file store location passed to FileSystemStorage using the
+    location attribute. Instead the location is applied dynamically on
+    creation of the subclass avoiding detection of changes by the migration
+    system.
 
-    Subclassing necessary to avoid messing up with migrations (#13).
+    Addresses #13. Fix is based on fix for similar issue in
+    https://github.com/julen/pootle/commit/fd7800050172549e9f31544843b986691290ddc2
     """
 
     def __init__(self, **kwargs):
