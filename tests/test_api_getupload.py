@@ -118,7 +118,14 @@ class ApiGetUploadTestCase(TestCase):
             get_stored_upload_file_data(self.su)
             local_settings.STORAGES_BACKEND = None
             django_drf_filepond.api.storage_backend = None
-            m.assert_called_once()
+            try:
+                m.assert_called_once()
+            # No assert_called_once on Python 3.5
+            except AttributeError:
+                self.assertEqual(
+                    m.call_count, 1,
+                    ('Expected _init_storage_backend to be called once but '
+                     'it has been called %s times.' % m.call_count))
 
     def test_get_remote_upload_not_on_remote_store(self):
         mock_storage_backend = self._setup_mock_storage_backend()
