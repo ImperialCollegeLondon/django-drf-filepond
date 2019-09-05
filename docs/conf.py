@@ -75,7 +75,7 @@ pygments_style = None
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-#html_theme = 'alabaster'
+# html_theme = 'alabaster'
 html_theme = 'sphinx_rtd_theme'
 
 # Theme options are theme-specific and customize the look and feel of a theme
@@ -130,8 +130,8 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'django-drf-filepond.tex', 'django-drf-filepond Documentation',
-     'Jeremy Cohen', 'manual'),
+    (master_doc, 'django-drf-filepond.tex',
+     'django-drf-filepond Documentation', 'Jeremy Cohen', 'manual'),
 ]
 
 

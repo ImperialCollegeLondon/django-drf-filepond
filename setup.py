@@ -1,5 +1,3 @@
-import re
-import os
 from setuptools import setup
 
 with open("README.md", "r") as readme:
@@ -14,7 +12,8 @@ setup(
     author="Jeremy Cohen",
     author_email="jeremy.cohen@imperial.ac.uk",
     url="https://github.com/ImperialCollegeLondon/django-drf-filepond",
-    download_url="https://github.com/ImperialCollegeLondon/django-drf-filepond.git",
+    download_url=(
+        "https://github.com/ImperialCollegeLondon/django-drf-filepond.git"),
     license="BSD 3-Clause",
     packages=[
         "django_drf_filepond",

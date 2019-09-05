@@ -1,7 +1,7 @@
 """FilePond server-side URL configuration
 
 Based on the server-side configuration details
-provided at: 
+provided at:
 https://pqina.nl/filepond/docs/patterns/api/server/#configuration
 """
 from django.conf.urls import url
