@@ -130,8 +130,8 @@ class LoadTestCase(TestCase):
     def test_load_id_file_notfound_error(self):
         response = self.client.get((reverse('load') +
                                     ('?id=%s' % self.upload_id)))
-        self.assertContains(response, 'Error reading local file...',
-                            status_code=500)
+        self.assertContains(response, 'Error accessing file, not found.',
+                            status_code=404)
 
     def test_load_uploadid_successful_request(self):
         su = StoredUpload.objects.get(upload_id=self.upload_id)

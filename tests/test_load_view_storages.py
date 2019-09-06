@@ -158,8 +158,8 @@ class LoadStoragesTestCase(TestCase):
             'Unable to open requested file...')
         response = self.client.get((reverse('load') +
                                     ('?id=%s' % self.upload_id)))
-        self.assertContains(response, 'Error reading local file...',
-                            status_code=500)
+        self.assertContains(response, 'Error accessing file, not found.',
+                            status_code=404)
 
     def test_load_remote_uploadid_successful_request(self):
         response = self.client.get((reverse('load') +

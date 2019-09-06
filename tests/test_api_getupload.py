@@ -128,9 +128,11 @@ class ApiGetUploadTestCase(TestCase):
                      'it has been called %s times.' % m.call_count))
 
     def test_get_remote_upload_not_on_remote_store(self):
+        # File store path for remote testing should be ''
+        file_store_path = ''
         mock_storage_backend = self._setup_mock_storage_backend()
         mock_storage_backend.exists.return_value = False
-        file_path = os.path.join(self.file_store_path, self.su.file_path)
+        file_path = os.path.join(file_store_path, self.su.file_path)
         with self.assertRaisesMessage(
                 FileNotFoundError,
                 ('File [%s] for upload_id [%s] not found on remote '
