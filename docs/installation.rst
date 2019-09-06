@@ -192,6 +192,15 @@ django-storages::
 See ":ref:`Working with file uploads`" for more details on how to use the 
 django-drf-filepond API to store files to a local or remote file store. 
 
+.. note:: ``DJANGO_DRF_FILEPOND_FILE_STORE_PATH`` is not used when using
+	a remote file store backend. It is recommended to remove this setting or
+	leave it set to None.
+	
+	The base storage location for a remote file storage backend from
+	django-storages is set using a setting specific to the backend that you
+	are using - see the django-storages documentation for your chosen
+	backend for further information.
+
 Advanced Configuration Options
 ==============================
 

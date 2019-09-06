@@ -23,7 +23,8 @@ from django_drf_filepond.renderers import PlainTextRenderer
 import re
 import os
 import mimetypes
-from django.http.response import HttpResponse
+from django.http.response import HttpResponse, HttpResponseNotFound,\
+    HttpResponseServerError
 from django_drf_filepond.api import get_stored_upload,\
     get_stored_upload_file_data
 from django_drf_filepond.exceptions import ConfigurationError
@@ -207,12 +208,12 @@ class LoadView(APIView):
             (filename, data_bytes_io) = get_stored_upload_file_data(su)
         except ConfigurationError as e:
             LOG.error('Error getting file upload: [%s]' % str(e))
-            return Response('The file upload settings are not '
-                            'configured correctly.',
-                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        except (FileNotFoundError, IOError):
-            return Response('Error reading local file...',
-                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return HttpResponseServerError('The file upload settings are '
+                                           'not configured correctly.')
+        except FileNotFoundError:
+            return HttpResponseNotFound('Error accessing file, not found.')
+        except IOError:
+            return HttpResponseServerError('Error reading file...')
 
         ct = _get_content_type(filename)
 
