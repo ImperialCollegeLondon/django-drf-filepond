@@ -1,0 +1,243 @@
+<!---------------------------------------------------------------------- 
+  -- A simple filepond jQuery example based on bootstrap's starter    --
+  -- template                                                         --
+  -- (https://getbootstrap.com/docs/4.0/examples/starter-template/).  --
+  -- Used to demonstrate how filepond can be used with a simple       --
+  -- back-end Django application that makes use of the                -- 
+  -- django-drf-filepond app.                                         -- 
+  --------------------------------------------------------------------->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="Filepond jquery demo page for django-drf-filepond">
+
+    <title>django-drf-filepond advanced demo page</title>
+
+    <!-- Bootstrap core CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+
+	<!-- Filepond stylesheet -->
+	<link href="https://unpkg.com/filepond/dist/filepond.css" rel="stylesheet">
+	
+    <style>
+        body {
+		  padding-top: 5em;
+		}
+		.starter-template {
+		  padding: 3rem 1.5rem;
+		  text-align: center;
+		}
+    </style>
+
+  </head>
+
+  <body>
+
+    <nav class="navbar navbar-expand-md navbar-dark bg-dark fixed-top">
+      <a class="navbar-brand" href="#">django-drf-filepond advanced demo page</a>
+      <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarsExampleDefault" aria-controls="navbarsExampleDefault" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="navbarsExampleDefault">
+        <ul class="navbar-nav mr-auto">
+          <li class="nav-item active">
+            <a class="nav-link" href="#">Home <span class="sr-only">(current)</span></a>
+          </li>
+        </ul>
+      </div>
+    </nav>
+
+    <main role="main" class="container">
+		<div class="row">
+			<div class="col-md-2"></div>
+			<div class="col-md-8">
+				<h2>Filepond advanced demo page for<br/>django-drf-filepond</h2>
+				<p class="lead">This page provides a more advanced standalone 
+				demo web page for django-drf-filepond demonstrating the use of the
+				library's store_upload functionality combined with filepond's
+				load function.
+				</p>
+				<p>To operate correctly, this page requires that you put the 
+				provided example <code>views.py</code> file into your demonstration 
+				app, as detailed in the django-drf-filepond tutorial.</p>
+			</div>
+			<div class="col-md-2"></div>
+		</div>
+		<div class="row">
+			<div class="col-md-2"></div>
+			<div class="col-md-8">
+				<form id="filepond-form">
+					<input type="file" class="pond" name="filepond"/>
+					<button id="uploads-submit" type="submit" disabled class="btn btn-success" style="float:right;">Store uploads</button>
+				</form>
+			</div>
+			<div class="col-md-2"></div>
+		</div>
+		<div class="row">
+			<div class="col-md-2"></div>
+			<div class="col-md-8">
+				<div class="container">
+					<div class="row" style="margin-top: 20px;">
+						<h5>Stored uploads</h5>
+					</div>
+					<div class="row" id="upload-row">
+					</div>
+				</div>
+			</div>
+			<div class="col-md-2"></div>
+		</div>
+    </main><!-- /.container -->
+
+    <!-- Bootstrap core JavaScript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8=" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script>
+    <!-- include FilePond library and jQuery adapter -->
+    <script src="https://unpkg.com/filepond/dist/filepond.min.js"></script>
+    <script src="https://unpkg.com/jquery-filepond/filepond.jquery.js"></script>
+    <!-- Configure and initialise Filepond -->
+    <script>
+      var uploaded = {};
+      var uploadIdFilenames = {}; 
+      var uploaded_error = {};
+      
+	  $(function(){	
+	    $('.pond').filepond();
+	    $('.pond').filepond('allowMultiple', true);
+	    $('.pond').filepond.setOptions({
+	    	server: {
+	    		url: 'http://localhost:8000/fp',
+	    		process: '/process/',
+	    		revert: '/revert/',
+	    		fetch: '/fetch/?target=',
+	    		load: '/load/?target='
+	    	},
+	    	onaddfile: function(error, file) {
+	    		console.log('File added: [' + error + ']   file: [' + file.id + ']');
+	    		uploaded[file.id] = file.filename
+	    		updateButton();
+	    	},
+	    	onremovefile: function(error, file) {
+	    		console.log('File removed: [' + error + ']   file: [' + file.id + ']');
+	    		if(file.id in uploaded) delete uploaded[file.id];
+	    		updateButton();
+	    	},
+	    	onerror: function(error, file, status) {
+	    		console.log('File error: [' + error + ']   file: [' + file.id + '], status [' + status + ']');
+	    		if(file.id in uploaded) {
+	    			delete uploaded[file.id];
+	    		}
+    			uploaded_error[file.id] = true;
+	    		updateButton();	    		
+	    	}
+	    	
+	    });
+	    
+	    $('#filepond-form').on('submit', function(e) {
+	    	e.preventDefault();
+	    	$.ajax({
+	    		type: 'POST',
+	    		url: '/submitForm/',
+	    		data: $(this).serialize(),
+	    		success: function(response) {
+	    			if('status' in response && 'uploads' in response &&
+	    					response.status == 'OK') {
+	    				// Remove the uploads that were successfully 
+	    				// stored from the list.
+	    				for(var i = 0; i < response.uploads.length; i++) {
+	    					// Lookup the filepond ID of the successfully
+	    					// stored upload and remove by ID.
+	    					var fpId = $('.filepond--item input[value="' + response.uploads[i] +
+	    						'"]').parent().parent().attr('id');
+	    					fpId = fpId.substring(fpId.lastIndexOf('-') + 1);
+	    					// Before removing the file, store it's name
+	    					// for use in the uploads table
+	    					uploadIdFilenames[response.uploads[i]] = uploaded[fpId];
+	    					$('.pond').filepond('removeFile', fpId);
+	    				}
+	    				setTimeout(loadStoredUploads(response.uploads));
+	    			}
+	    			else {
+	    				alert('An error has occurred storing the uploads')
+	    			}
+	    		}
+	    	});
+	    });
+	    
+	    $('body').on('click', '.del-upload-btn', function(e) {
+	    	var delUploadId = $(e.currentTarget).data('id');
+	    	$.ajax({
+	    		type: 'DELETE',
+	    		url: '/submitForm/?' + $.param({'id': delUploadId}),
+	    		success: function(response) {
+	    			if('status' in response && response.status == 'OK') {
+	    				$('table.uploads tr[data-upload="' + delUploadId + '"]').remove();
+	    				if($('table.uploads tr[data-upload]').length == 0) {
+		    				// Reset the stored uploads table
+		    				loadStoredUploads(false);
+		    			}
+	    			}
+	    			else {
+	    				alert('An error has occurred deleting the stored upload');
+	    			}
+	    		},
+	    		error: function(jqXHR, status, error) {
+	    			alert('Error deleting stored upload: ' + error);
+	    		}
+	    	});
+	    });
+	    
+	    function updateButton() {
+	    	if(Object.keys(uploaded).length > 0) $('#uploads-submit').removeAttr('disabled');
+	    	else $('#uploads-submit').attr('disabled','');
+	    }
+	    
+	    function loadStoredUploads(upload_ids) {
+	    	if(!upload_ids) {
+	    		var noUploadsHTML = '<div class="alert alert-primary no-uploads" role="alert" style="width: 100%">' +
+	    			'<b>No stored uploads.</b> There are currently no stored uploads to display.</div>';
+	    		$('#upload-row').html(noUploadsHTML);
+	    		return;
+	    	}
+	    	var tableHeader = '<table class="table table-dark uploads"><thead><tr>' +
+	    		'<th scope="col">Preview</th><th scope="col">Name</th>' +
+	    		'<th scope="col">ID</th><th scope="col"></th>' +
+	    		'</tr></thead><tbody class="upload-rows">';
+	    	
+	    	var tableRows = '';
+	    	var tableFooter = '</tbody></table>';
+	    	
+	    	for(var i = 0; i < upload_ids.length; i++) {
+	    		var filename = uploadIdFilenames[upload_ids[i]];
+	    		var img = 'Preview not available';
+	    		if(filename.endsWith('.jpg') || filename.endsWith('.png')) {
+	    			img = '<img src="/fp/load?id=' + upload_ids[i] + '" style="maxWidth: 120px;"/>'
+	    		}
+	    		tableRows += '<tr data-upload="' + upload_ids[i] + '"><td>' + img + '</td><td>' + filename + '</td>' +
+	    			'<td>' + upload_ids[i] + '</td><td><button class="btn btn-sm btn-outline-danger del-upload-btn" data-id="' +
+	    			upload_ids[i] + '">Delete stored upload</button></td></tr>'; 
+	    	}
+	    	
+	    	// Populate the content
+	    	if($('.no-uploads').length == 1) {
+	    		$('.no-uploads').remove()
+	    		$('#upload-row').html(tableHeader+tableRows+tableFooter);
+	    	}
+	    	else {
+	    		$('.upload-rows').append(tableRows);
+	    	}
+	    }
+	    loadStoredUploads(false);
+	    
+	  });
+	  
+	  
+	</script>
+
+  </body>
+</html>
