@@ -1,9 +1,9 @@
 Tutorial
-========
+===========
 
 This tutorial will walk you through the process of creating a basic 
 Django application that provides server-side functionality for 
-`filepond <https://pqina.nl/filepond/>`_ using the `django-drf-filepond <https://github.com/ImperialCollegeLondon/django-drf-filepond>`_ app.
+`filepond <https://pqina.nl/filepond/>`_ using the `django-drf-filepond <https://github.com/ImperialCollegeLondon/django-drf-filepond>`_ app. 
 
 A simple demo web page `filepond-jquery-example.html <https://github.com/ImperialCollegeLondon/django-drf-filepond/blob/master/docs/tutorial/filepond-jquery-example.html>`_ is provided for 
 you to use as a test front-end for the demo Django application built in 
@@ -11,7 +11,16 @@ this tutorial. The web page uses filepond's jQuery adapter, loaded from a
 CDN, and is based on the `Bootstrap <https://getbootstrap.com/>`_ library's 
 `starter template <https://getbootstrap.com/docs/4.1/examples/starter-template/>`_.
 
-*NOTE: This tutorial assumes that you are using Python 3 and have* `virtualenv <https://virtualenv.pypa.io/en/latest/>`_ *installed*
+.. note:: The first section of the tutorial (**A**) focuses on the use of local file
+	storage (via some form of locally mounted storage on the host server)
+	for temporary uploads and stored files. An advanced section at the end
+	of the tutorial (**B**) details the use of the remote file storage capabilities
+	provided by `django-drf-filepond` via integration with the
+	`django-storages` library. A separate demo HTML page is used for
+	this part of the tutorial.   
+
+.. note:: **This tutorial assumes that you are using Python 3 and have** 
+	`virtualenv <https://virtualenv.pypa.io/en/latest/>`_ **installed**
 
 The tutorial will walk you through the following steps:
 
@@ -20,7 +29,7 @@ The tutorial will walk you through the following steps:
   3. Add the front-end demo web page
   4. Test the service
 
-1. Set up your environment
+A1. Set up your environment
 ---------------------------
 
 Create a directory in which to undertake this tutorial. For example, in 
@@ -62,8 +71,8 @@ You can now install the dependencies:
 	pip install -r requirements.txt
 
 
-Creating the Django application
--------------------------------
+A2: Creating the Django application
+-----------------------------------
 
 In ``${TUTORIAL_DIR}`` with the virtualenv created in step 1 activated,
 use the *django-admin* command to create a new django project:
@@ -121,8 +130,8 @@ You can now create the database by running:
 	python manage.py migrate
 
 
-3. Add the front-end demo web page
-----------------------------------
+A3. Add the front-end demo web page
+-----------------------------------
 
 We now have a very basic, but fully-configured Django project that will act 
 as a server for filepond. In order to test this, we need a filepond client.
@@ -155,8 +164,8 @@ import statements::
 	from django.views.static import serve
 	from django.conf import settings
 
-4. Test the service
--------------------
+A4. Test the service
+--------------------
 
 You are now in a position to test the project that you've set up.
 
@@ -198,3 +207,28 @@ generated for the upload from the URL. The file upload should have appeared
 in the filepond panel in the webpage and it can be cancelled by clicking the 
 cancel button in the UI in the same way as a file uploaded from the local 
 system by browsing or drag and drop.
+
+Part B: Advanced tutorial - Using remote file storage
+====================================================
+
+`django-drf-filepond`'s remote file storage enables you to place stored
+uploads on different remote file stores. You can make use of any of the
+`***storage backends supported by django-storages*** <https://readthedocs...>`_.
+This includes, for example, Amazon S3, SFTP, ...
+
+This section of the tutorial assumes that you have completed part A and
+builds on the deployed service developed there.
+To support this part of the tutorial, a more advanced demo page is provided.
+This HTML file (`filepond-jquery-example-advanced.html <https://github.com/ImperialCollegeLondon/django-drf-filepond/filepond-jquery-example-advanced.html...>`_.)
+includes a more advanced design to support the display of and subsequent
+removal of stored uploads.
+
+.. note:: Not all features detailed here are supported on all ``django-storages``
+	backends. Support depends directly on whether django-storages provides
+	support for a given feature. For example, if django-storages doesn't
+	support file deletion for a particular platform, `django-drf-filepond`
+	will not support file deletion for that platform.
+	
+
+ 
+`text <link>`_
