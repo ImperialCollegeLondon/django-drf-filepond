@@ -69,22 +69,85 @@ removed and the path will be interpreted as being relative to
 ``DJANGO_DRF_FILEPOND_FILE_STORE_PATH``. The path that you provide should 
 include the filename that you would like the file stored as.
 
-If the file is being stored to a remote location via django-storages, the 
-file will be placed at the location defined by ``destination_file_path``, 
-relative to the base file store location. If you pass a path that begins 
-with ``/``, the leading ``/`` will be removed and the path will become 
-relative. For example, if you are using Amazon S3-based storage, then your 
-file will be stored at the specified location within the bucket configured 
-in your django-storages configuration provided in your app's ``settings.py``.
+If the file is being stored to a remote location via *django-storages*, the
+*DJANGO_DRF_FILEPOND_FILE_STORE_PATH* configuration parameter does NOT apply
+and should be removed or set to ``None``. Instead, the base file store
+location is set using *django-storages* parameters that are specific to the
+storage backend that you're using. See section 1.1 below on configuring
+remote file storage for further details.
+
+When using remote storage, the file being stored will be placed at the
+location defined by ``destination_file_path``, relative to the base file
+store location. If you pass a path that begins with ``/``, the leading ``/``
+will be removed and the path will become relative. For example, if you are
+using Amazon S3-based storage, then your file will be stored at the
+specified location within the bucket configured in your *django-storages*
+configuration provided in your app's ``settings.py``.
 
 A call to ``store_upload`` returns an instance of 
 ``django_drf_filepond.models.StoredUpload``. A stored upload object is 
 identified by a unique ``upload_id``. You can use this value to lookup the 
 database record associated with a stored file at a later time. Via the 
 ``StoredUpload`` database record you can *read* the stored file or *delete* 
-it. File deletion is subject to support within the django-storages backend 
+it. File deletion is subject to support within the *django-storages* backend 
 that you're using.
 
+1.1. Configuring remote file storage
+#####################################
+
+As highlighted above, remote file storage support is provided through the
+`django-storages <https://github.com/jschneier/django-storages>`_ library.
+
+To configure remote file storage, set the ``DJANGO_DRF_FILEPOND_STORAGES_BACKEND``
+parameter in your application's ``settings.py`` file to specify the 
+*django-storages* backend that you wish to use. See the 
+`django-storages documentation <https://django-storages.readthedocs.io/en/latest/index.html>`_
+for the storage backend that you wish to use. The value specified for the
+*django-storages* *DEFAULT_FILE_STORAGE* parameter is the value you should
+set ``DJANGO_DRF_FILEPOND_STORAGES_BACKEND`` to. For example:
+
+For the Amazon S3 backend, set::
+
+	DJANGO_DRF_FILEPOND_STORAGES_BACKEND = 'storages.backends.s3boto3.S3Boto3Storage'
+
+For the Azure Storage backend, set::
+
+	DJANGO_DRF_FILEPOND_STORAGES_BACKEND = 'storages.backends.azure_storage.AzureStorage'
+
+For the Google Cloud Storage backend, set::
+
+	DJANGO_DRF_FILEPOND_STORAGES_BACKEND = 'storages.backends.gcloud.GoogleCloudStorage'
+	
+*django-storages* provides support for several other storage backends including
+`Digital Ocean <https://django-storages.readthedocs.io/en/latest/backends/digital-ocean-spaces.html>`_
+and `Dropbox <https://django-storages.readthedocs.io/en/latest/backends/dropbox.html>`_.
+
+Once you have set ``DJANGO_DRF_FILEPOND_STORAGES_BACKEND`` you will need to
+set a number of additional configuration parameters specific to your chosen
+backend. These are detailed in the *django-storages* documentation. The
+specific set of parameters that you need to provide depends on your chosen
+storage backend configuration. 
+
+As an example, if you are using the Amazon S3 storage backend
+and want to store uploads into a bucket named *filepond-uploads* in the
+*eu-west-1* region, with the bucket and files set to be accessible only by
+the user set using the access/secret key, you would provide the following
+set of parameters in your application's ``settings.py`` file::
+
+	DJANGO_DRF_FILEPOND_STORAGES_BACKEND = 'storages.backends.s3boto3.S3Boto3Storage'
+	AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
+	AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
+	AWS_S3_REGION_NAME = 'eu-west-1'
+	AWS_STORAGE_BUCKET_NAME = 'filepond-uploads'	
+	AWS_DEFAULT_ACL = 'private'
+	AWS_BUCKET_ACL = 'private'
+	AWS_AUTO_CREATE_BUCKET = True
+
+Note that the ACL for the bucket and the default ACL for files are set to
+private. There may well be other security-related parameters that you will
+want/need to set to ensure the security of the files on your chosen storage
+backend. The configuration here provides an example but it See the warning at the start of the tutorial about file security
+ 
 2. Manual handling of file storage
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

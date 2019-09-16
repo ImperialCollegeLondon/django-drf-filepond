@@ -15,12 +15,26 @@ CDN, and is based on the `Bootstrap <https://getbootstrap.com/>`_ library's
 
 	**Part A** focuses on setting up a simple Django application to demonstrate
 	basic use of *django-drf-filepond*. It uses local file storage
-	(via some form of locally mounted storage on the host server)
+	(via some form of locally mounted storage on the host computer)
 	for temporary uploads and stored files. 
 	
 	**Part B**, an advanced section at the end of the tutorial details the
 	use of the remote file storage capabilities provided by
 	*django-drf-filepond* via integration with the *django-storages* library.   
+
+.. warning:: The example given in this tutorial is purely to demonstrate how
+	to use the *django-drf-filepond* API and to help you get started with
+	using the library's features.
+	
+	The example application built here does not address security aspects of
+	using either local or remote file storage and you should pay particular
+	care to this when building your own applications using *django-drf-filepond*.
+	
+	For example, when using the *django-storages* S3 backend (see tutorial
+	section B2), a number of parameters are provided to help configure
+	security of the uploaded files and the bucket used for file storage. 
+	You should, for example, look at the various ACL options provided in the
+	`django-storages S3 documentation <https://django-storages.readthedocs.io/en/latest/backends/amazon-S3.html>`_.
 
 Tutorial Part A: Building a basic Django application that uses django-drf-filepond
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 
@@ -44,9 +58,10 @@ your home directory, create the directory ``drf-filepond-tutorial``
 We'll refer to this directory as ``${TUTORIAL_DIR}`` throughout the rest 
 of the tutorial. If you're using a Linux or Mac OS platform with a bash 
 shell (or a Windows-based environment that provides a bash shell such as 
-`WSL <https://docs.microsoft.com/en-us/windows/wsl>`_) you can set the 
-environment variable ``TUTORIAL_DIR`` to point the tutorial directory, for
-example:
+`WSL <https://docs.microsoft.com/en-us/windows/wsl>`_ or the Git BASH shell
+provided with `Git for Windows <https://gitforwindows.org/>`_) you can set 
+the environment variable ``TUTORIAL_DIR`` to point the tutorial directory,
+for example:
 
 .. prompt:: bash
 	
@@ -192,6 +207,19 @@ should see the demo page shown in the figure below:
 
 .. image:: images/filepond-demo-page.png
 
+You can now try uploading a file to the server. Drag and drop a file onto
+the grey filepond panel on the web page or click *Browse* and select a file.
+The file should be uploaded successfully. If you look in the 
+``${TUTORIAL_DIR}/filepond-temp-uploads`` directory, the directory we set as
+the temporary upload directory using the ``DJANGO_DRF_FILEPOND_UPLOAD_TMP``
+parameter in part A2 above, you will see that the file has been uploaded to
+this location and placed in a directory named using a unique ID. The file is
+also saved using a unique ID to replace it's original filename, which is
+preserved in the database. If you click the 'X' icon for the uploaded file
+that appears alongside the "Upload complete" message, the temporary upload
+is cancelled and you should be able to verify that the file has now
+disappeared from the ``${TUTORIAL_DIR}/filepond-temp-uploads`` directory. 
+
 You can also test programmatically uploading a file from a remote URL. You 
 can use your browser's developer console while on the django-drf-filepond 
 demo page to call the filepond object's `addFile method <https://pqina.nl/filepond/docs/patterns/api/filepond-instance/#methods>`_ 
@@ -217,7 +245,7 @@ system by browsing or drag and drop.
 Tutorial Part B: Using remote file storage
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-*django-drf-filepond*'s remote file storage enables you to place stored
+*django-drf-filepond*'s remote file storage functionality enables you to place stored
 uploads on a remote file store. You can then use filepond's
 `load endpoint <https://pqina.nl/filepond/docs/patterns/api/server/#load>`_ 
 to load a stored file directly from the remote storage. You can make use
@@ -269,14 +297,13 @@ submitted, this must be handled by your application rather than by
 triggers the permanent storage of the file upload. 
 
 ``filepond-jquery-example-advanced.html`` contains an HTML form in which the
-filepond component is embedded. When a file is added to filepond, it is
-uploaded as a temporary upload. Clicking the "Store uploads" button triggers
+filepond component is embedded. Clicking the "Store uploads" button triggers
 submission of the form. This form submission is handled by a view in the
 *drf_filepond_tutorial* app. In part A of the tutorial, there were no views
 within the *drf_filepond_tutorial* app itself. File uploads were handled by
 the views provided by *django-drf-filepond*. We now need a view in
 the *drf_filepond_tutorial* app to handle the form submission. A ``views.py``
-file containing the implementation of the views to handle requests from the
+file containing the implementation of a view class to handle requests from the
 web page is provided in the ``docs/tutorial`` directory of the *django-drf-filepond*
 repository.
 
@@ -295,6 +322,14 @@ following entry to the ``urlpatterns`` list in ``urls.py``:
 
 			url(r'^submitForm/$', views.SubmitFormView.as_view(), name='submit_form'),
 
+and add the following additional import statement below the existing import
+statements towards the top of the top of the ``urls.py`` file: 
+
+.. code-block:: python
+
+			from drf_filepond_tutorial import views
+
+
 This will ensure that all incoming requests to the ``/submitForm/`` URL are
 handled by the ``SubmitFormView`` class in the ``views.py`` file that you
 just added.
@@ -309,17 +344,18 @@ we don't have any configuration in place to tell *django-drf-filepond* which
 storage backend to use and the settings for communicating with that backend
 and authenticating with it. 
 
-When using a remote storage backend, the ``DJANGO_DRF_FILEPOND_FILE_STORE_PATH``
-parameter that was set in ``${TUTORIAL_DIR}/drf_filepond_tutorial/settings.py``
-is no longer used - this only applies to local file storage. The various
-storage backends provided in *django-storages* each provide their own
-configuration options to define the base location on the remote storage
-platform for storage of files.
+The storage backends provided by *django-storages* each include a number of
+configuration options. This includes a way to define the base location on
+the remote storage platform where files should be stored.
 
-You should set ``DJANGO_DRF_FILEPOND_FILE_STORE_PATH`` to ``None`` or remove
-the setting altogether from ``${TUTORIAL_DIR}/drf_filepond_tutorial/settings.py``
+.. note:: If you have extended your demo app from part A before starting
+	this part of the tutorial and have added the
+	``DJANGO_DRF_FILEPOND_FILE_STORE_PATH`` setting into your 
+	``${TUTORIAL_DIR}/drf_filepond_tutorial/settings.py`` file, you should
+	set it to ``None`` or remove it altogether from the settings file since
+	this parameter is not used for remote file storage. 
 
-It is now necessary to add the storage backend settings to ``${TUTORIAL_DIR}/drf_filepond_tutorial/settings.py``.
+We'll now add some storage backend settings to ``settings.py``.
 For the example here, we'll use the Amazon S3 storage backend in *django-storages*
 to talk to the open source, Amazon S3-compatible `MinIO <https://min.io/>`_
 storage service. You can download and run MinIO within a docker container
@@ -335,11 +371,12 @@ additional dependencies required by a given backend you can look in the
 ``extras_require`` section of the `django-storages setup.py file <https://github.com/jschneier/django-storages/blob/master/setup.py>`_.
 This shows, for example, that the ``sftp`` backend requires the ``paramiko``
 library. `boto3 <https://boto3.amazonaws.com/v1/documentation/api/latest/index.html>`_ 
-is the library for accessing Amazon Web Services and we'll require ``boto3``
+is the library used for accessing Amazon Web Services and we'll require ``boto3``
 to be installed to use the Amazon S3 storage backend in this example.
 
-Ensuring that you have sourced the Python virtualenv virtual environment that
-was set up in section A1 of the tutorial, install ``boto3`` as follows:
+Ensuring that you have first activated the Python virtualenv virtual
+environment (set up in section A1 of the tutorial) in your terminal, install
+``boto3`` as follows:
 
 .. prompt:: bash
 
@@ -350,18 +387,18 @@ details the various configuration settings that are available.
 
 *django-drf-filepond* requires that, for a remote storage backend, you set
 the ``DJANGO_DRF_FILEPOND_STORAGES_BACKEND`` parameter in your ``settings.py``
-file. The value of this parameter is the same as value shown in the *django-storages*
-documentation as being used for their *DEFAULT_FILE_STORAGE* setting. For
+file. The value to use for this parameter is the same as value shown in the *django-storages*
+documentation for the *DEFAULT_FILE_STORAGE* setting for a given storage backend. For
 example, for the Amazon S3 backend, this would be ``'storages.backends.s3boto3.S3Boto3Storage'``.
 For Azure Storage, the value would be ``'storages.backends.azure_storage.AzureStorage'``.
-Set the parameter in your *django-storages* ``${TUTORIAL_DIR}/drf_filepond_tutorial/settings.py``
+Set the parameter in your *drf-filepond-tutorial* ``${TUTORIAL_DIR}/drf_filepond_tutorial/settings.py``
 file as follows:
 
 .. code-block:: python
 
 	DJANGO_DRF_FILEPOND_STORAGES_BACKEND = 'storages.backends.s3boto3.S3Boto3Storage'
 
-You now need to add a number of *django-sotrages*-specific parameters to
+You now need to add a number of *django-storages*-specific parameters to
 configure the S3 backend. For targeting a local MinIO deployment, running
 over SSL with a valid SSL server certificate, we use the following parameters
 (note that you'll need to modify some of the values to match your own MinIO
@@ -369,7 +406,6 @@ or S3 settings):
 
 .. code-block:: python
 
-	DJANGO_DRF_FILEPOND_STORAGES_BACKEND = 'storages.backends.s3boto3.S3Boto3Storage'
 	AWS_ACCESS_KEY_ID = '<Your MinIO access key>'
 	AWS_SECRET_ACCESS_KEY = '<Your MinIO secret key>'
 	AWS_STORAGE_BUCKET_NAME = 'drf-filepond-tutorial'
@@ -387,7 +423,6 @@ store uploads to S3:
 
 .. code-block:: python
 
-	DJANGO_DRF_FILEPOND_STORAGES_BACKEND = 'storages.backends.s3boto3.S3Boto3Storage'
 	AWS_ACCESS_KEY_ID = '<Your AWS access key>'
 	AWS_SECRET_ACCESS_KEY = '<Your AWS secret key>'
 	AWS_STORAGE_BUCKET_NAME = 'drf-filepond-tutorial'
