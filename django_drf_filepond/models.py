@@ -88,7 +88,10 @@ class StoredUpload(models.Model):
     stored = models.DateTimeField(auto_now_add=True)
 
     def get_absolute_file_path(self):
-        return os.path.join(local_settings.FILE_STORE_PATH, self.file_path)
+        fsp = local_settings.FILE_STORE_PATH
+        if not fsp:
+            fsp = ''
+        return os.path.join(fsp, self.file_path)
 
 
 # When a TemporaryUpload record is deleted, we need to delete the

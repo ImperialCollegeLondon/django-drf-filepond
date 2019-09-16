@@ -62,9 +62,8 @@ class DjangoDrfFilepondConfig(AppConfig):
                 LOG.debug('Filepond app init: File store path already '
                           'exists')
         else:
-            if storage_class:
+            if not storage_class:
                 raise ImproperlyConfigured(
-                    'A django-storages configuration is provided so you '
-                    'must set the base file storage path for this storage '
-                    'backend using %sFILE_STORE_PATH'
+                    'You are using local file storage so you must set the '
+                    'base file storage path using %sFILE_STORE_PATH'
                     % local_settings._app_prefix)
