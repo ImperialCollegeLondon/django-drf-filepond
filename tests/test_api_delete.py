@@ -35,6 +35,12 @@ except ImportError:
     from mock import MagicMock
     from mock import patch
 
+# There's no built in FileNotFoundError, FileExistsError in Python 2
+try:
+    FileNotFoundError
+except NameError:
+    FileNotFoundError = IOError
+
 LOG = logging.getLogger(__name__)
 
 
@@ -81,7 +87,7 @@ LOG = logging.getLogger(__name__)
 # test_delete_stored_upload_local_remove_fails: Call delete_stored_upload
 #    with a valid upload_id but where the file is missing on the local file
 #
-class ApiRemoteTestCase(TestCase):
+class ApiDeleteTestCase(TestCase):
 
     def setUp(self):
         self.storage_backend = local_settings.STORAGES_BACKEND
