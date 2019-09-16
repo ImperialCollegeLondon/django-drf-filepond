@@ -36,6 +36,12 @@ try:
 except NameError:
     FileExistsError = OSError
 
+# Python 2/3 support
+try:
+    from unittest.mock import patch
+except ImportError:
+    from mock import patch
+
 LOG = logging.getLogger(__name__)
 
 
@@ -88,6 +94,9 @@ LOG = logging.getLogger(__name__)
 #
 # test_store_upload_local_direct_missing_store_path: Call _store_upload_local
 #    with a file store directory set that is missing. Expect exception.
+#
+# test_store_upload_local_copy_to_store_fails: Call _store_upload_local and
+#    the copy to permanent storage fails - expect exception.
 #
 class ApiTestCase(TestCase):
 
@@ -324,6 +333,23 @@ class ApiTestCase(TestCase):
                 'specified location - file exists.'):
             _store_upload_local('/test_storage', 'testfile.txt', tu)
 
+    def test_store_upload_local_copy_to_store_fails(self):
+        tu = TemporaryUpload.objects.get(upload_id=self.upload_id)
+        with patch('shutil.copy2') as copy2_patch:
+            with patch('os.path.exists') as exists_patch:
+                with patch('os.path.isdir') as isdir_patch:
+                    exists_patch.side_effect = [True, False, True]
+                    isdir_patch.return_value = True
+                    copy2_patch.side_effect = IOError(
+                        'Error moving temporary file to permanent storage '
+                        'location')
+                    with self.assertRaisesMessage(
+                            IOError,
+                            'Error moving temporary file to permanent '
+                            'storage location'):
+                        _store_upload_local('/test_storage', 'testfile.txt',
+                                            tu)
+
     def tearDown(self):
         upload_tmp_base = getattr(local_settings, 'UPLOAD_TMP', None)
         filestore_base = getattr(local_settings, 'FILE_STORE_PATH', None)
@@ -346,7 +372,8 @@ class ApiTestCase(TestCase):
 
         test_target_file = os.path.join(filestore_base, test_filename)
         test_target_file2 = os.path.join(filestore_base, test_filename2)
-        test_target_file_fn = os.path.join(filestore_base, test_filename_fn)
+        test_target_dir_fn = os.path.join(filestore_base, test_filename_fn)
+        test_target_file_fn = os.path.join(filestore_base, self.fn)
         test_target_dir = os.path.dirname(test_target_file)
 
         for tmp_file in tmp_files:
@@ -376,6 +403,11 @@ class ApiTestCase(TestCase):
             LOG.debug('Removing test_target_file_fn:<%s>'
                       % test_target_file_fn)
             os.remove(test_target_file_fn)
+        if (os.path.exists(test_target_dir_fn) and
+                os.path.isfile(test_target_dir_fn)):
+            LOG.debug('Removing test_target_dir_fn:<%s>'
+                      % test_target_dir_fn)
+            os.remove(test_target_dir_fn)
         # Remove directory
         if (os.path.exists(test_target_dir) and
                 os.path.isdir(test_target_dir)):

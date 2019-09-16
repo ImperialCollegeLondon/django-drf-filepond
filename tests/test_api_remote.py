@@ -9,8 +9,8 @@ store_upload:
     filesystem or to a remote file store via the django-storages library.
     If using a local filestore, the base location where files are stored is
     set using the DJANGO_DRF_FILEPOND_FILE_STORE_PATH setting. If using a
-    remote file store, this setting defines the base location on the remote
-    file store where files will placed.
+    remote file store, the settings for the storage backend determine the
+    base file storage location relative to which files will be placed.
 '''
 import logging
 import os
@@ -72,6 +72,12 @@ LOG = logging.getLogger(__name__)
 #    a valid upload_id but with no DJANGO_DRF_FILEPOND_FILE_STORE_PATH
 #    setting set in the application. This should raise an exception.
 #
+# test_remote_store_upload_fails: Call _remote_store_upload and cause save
+#    on the storage backend to fail, checking that an exception is raised.
+#
+# test_remote_store_upload_uses_tu_filename: Call _remote_store_upload and
+#    check that if no filename is provided, the name from temp_upload is used.
+#
 class ApiRemoteTestCase(TestCase):
 
     def setUp(self):
@@ -96,6 +102,7 @@ class ApiRemoteTestCase(TestCase):
         # class name above. This ensures that we're looking at the mocked
         # backend class.
         import django_drf_filepond.api
+        self.api = django_drf_filepond.api
         django_drf_filepond.api.storage_backend_initialised = False
         django_drf_filepond.api._init_storage_backend()
         self.mock_storage_backend = django_drf_filepond.api.storage_backend
@@ -180,6 +187,23 @@ class ApiRemoteTestCase(TestCase):
 
         self.assertFalse(os.path.exists(
             os.path.join(upload_tmp_base, self.upload_id, self.file_id)))
+
+    def test_remote_store_upload_fails(self):
+        errorMsg = 'Error saving file to remote storage backend.'
+        self.mock_storage_backend.save.side_effect = Exception(errorMsg)
+
+        tu = TemporaryUpload.objects.get(upload_id=self.upload_id)
+        with self.assertRaisesMessage(Exception, errorMsg):
+            self.api._store_upload_remote('', self.fn, tu)
+
+    def test_remote_store_upload_uses_tu_filename(self):
+        errorMsg = 'Throwing error to prevent further running during test.'
+        self.mock_storage_backend.save.side_effect = Exception(errorMsg)
+        tu = TemporaryUpload.objects.get(upload_id=self.upload_id)
+        with self.assertRaisesMessage(Exception, errorMsg):
+            self.api._store_upload_remote('/test_storage/', None, tu)
+        self.mock_storage_backend.save.assert_called_once_with(
+            os.path.join('/test_storage/', tu.upload_name), tu.file)
 
     def tearDown(self):
         # self.patcher.stop() # Not required, done via cleanup hook
