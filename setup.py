@@ -1,5 +1,3 @@
-import re
-import os
 from setuptools import setup
 
 with open("README.md", "r") as readme:
@@ -7,14 +5,15 @@ with open("README.md", "r") as readme:
 
 setup(
     name="django-drf-filepond",
-    version="0.1.2",
+    version="0.2.0rc1",
     description="Filepond server app for Django REST Framework",
     long_description=long_description,
     long_description_content_type='text/markdown',
     author="Jeremy Cohen",
     author_email="jeremy.cohen@imperial.ac.uk",
     url="https://github.com/ImperialCollegeLondon/django-drf-filepond",
-    download_url="https://github.com/ImperialCollegeLondon/django-drf-filepond.git",
+    download_url=(
+        "https://github.com/ImperialCollegeLondon/django-drf-filepond.git"),
     license="BSD 3-Clause",
     packages=[
         "django_drf_filepond",
@@ -27,19 +26,21 @@ setup(
         "djangorestframework==3.9.3;python_version=='2.7'",
         "djangorestframework>=3.9.3;python_version>='3.5'",
         "shortuuid>=0.5.0",
-        "requests>=2.20.1"
+        "requests>=2.20.1",
+        "django-storages>=1.7.1"
     ],
     tests_require=[
         "nose",
         "coverage",
         "httpretty",
-        "mock;python_version<'3.3'"
+        "mock>=3.0.0;python_version<'3.3'",
+        "paramiko"
     ],
     zip_safe=False,
     test_suite="tests.runner.start",
     classifiers=[
         "Operating System :: OS Independent",
-        "Development Status :: 3 - Alpha",
+        "Development Status :: 4 - Beta",
         "Environment :: Web Environment",
         "Framework :: Django",
         "Intended Audience :: Developers",

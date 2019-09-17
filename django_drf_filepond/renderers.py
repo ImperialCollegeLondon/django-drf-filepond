@@ -15,11 +15,12 @@ from rest_framework.renderers import BaseRenderer
 
 LOG = logging.getLogger(__name__)
 
-# This plaintext renderer is taken from the example in the 
-# django rest framework docs since this provides exactly what we 
-# require but doesn't seem to be included in the core DRF API.
-# See: https://www.django-rest-framework.org/api-guide/renderers/#custom-renderers
-# This renderer avoids the issue with the standard JSONRenderer that 
+
+# This plaintext renderer is taken from the example in the
+# django rest framework docs since this provides exactly what we
+# require but doesn't seem to be included in the core DRF API. See:
+# https://www.django-rest-framework.org/api-guide/renderers/#custom-renderers
+# This renderer avoids the issue with the standard JSONRenderer that
 # results in raw text responses being wrapped in quotes.
 class PlainTextRenderer(BaseRenderer):
     '''
@@ -33,7 +34,7 @@ class PlainTextRenderer(BaseRenderer):
         Encode the raw data - default charset is UTF-8.
         '''
         LOG.debug('Data is <%s>' % data)
-        
+
         if data:
             if type(data) in [dict, OrderedDict]:
                 return json.dumps(data)

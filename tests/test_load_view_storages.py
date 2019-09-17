@@ -1,53 +1,65 @@
+import cgi
+from io import BytesIO
 import logging
+import os
 
 from django.test.testcases import TestCase
-from django_drf_filepond.views import _get_file_id
-from django_drf_filepond.models import TemporaryUpload, StoredUpload
-from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
+from django.utils import timezone
+
 import django_drf_filepond.drf_filepond_settings as local_settings
-import cgi
-import os
-import shutil
-import django_drf_filepond
+from django_drf_filepond.models import StoredUpload
+from django_drf_filepond.views import _get_file_id
+
+# Python 2/3 support
+try:
+    from unittest.mock import patch
+except ImportError:
+    from mock import patch
+try:
+    FileNotFoundError
+except NameError:
+    FileNotFoundError = IOError
 
 LOG = logging.getLogger(__name__)
 
 
 #########################################################################
-# The load endpoint is used by the client to load a remote stored file
-# from the server. This is a file that has been stored using the
-# django-drf-filepond library and is managed by the library.
+# The load endpoint is used by the client to load a stored file from
+# storage managed by the django-drf-filepond library.
+#
 # https://pqina.nl/filepond/docs/patterns/api/server/#load
-# The filepond client makes a load request to the server containing an
-# ID or a filename. The server looks up the provided file information in
-# the StoredUpload table and returns the file to the client if a valid ID
-# or filename have been provided.
 #
-# test_load_incorrect_method: Make POST/PUT/DELETE requests to the load
-#     endpoint to check these are rejected with 405 method not allowed
+# The tests in this class focus on loading files from remote storage
+# accessed via the django-storages library. The filepond client makes a
+# load request to the server containing an ID or a filename. The server
+# looks up the provided file information in the StoredUpload table and
+# returns the file to the client if a valid ID or filename was provided.
 #
-# test_load_invalid_param: Make a GET request to the load endpoint
+# test_load_remote_incorrect_method: Make POST/PUT/DELETE requests to the
+#     load endpoint to check these result in 405 method not allowed
+#
+# test_load_remote_invalid_param: Make a GET request to the load endpoint
 #     with an incorrect parameter name in the URL query string.
 #
-# test_load_blank_id: Make a GET request to the load endpoint with a
-#     blank ID provided in the URL query string.
+# test_load_remote_blank_id: Make a GET request to the load endpoint
+#      with a blank ID provided in the URL query string.
 #
-# test_load_id_notfound_error: Make a GET request to the load endpoint
-#     with an ID that is not an upload ID or filename. (404).
+# test_load_remote_id_notfound_error: Make a GET request to the load
+#      endpoint with an ID that is not an upload ID or filename. (404).
 #
-# test_load_id_file_notfound_error: Make a GET request to the load
+# test_load_remote_id_file_notfound_error: Make a GET request to the load
 #     endpoint with a valid upload ID where the file doesn't exist (404).
 #
-# test_load_uploadid_successful_request: Make a GET request to the load
-#     endpoint with an upload ID. The request is successful.
+# test_load_remote_uploadid_successful_request: Make a GET request to the
+#      load endpoint with an upload ID. The request is successful.
 #
-# test_load_filename_successful_request: Make a GET request to the load
-#     endpoint with a filename. The request is successful.
+# test_load_remote_filename_successful_request: Make a GET request to the
+#      load endpoint with a filename. The request is successful.
 #
-# test_load_ambiguous_id_file: Make a GET request to the load endpoint
-#     a 22-character ID in the URL query string that is a file name.
-class LoadTestCase(TestCase):
+# test_load_remote_ambiguous_id_file: Make a 'load' GET request with a
+#     22-character ID in the URL query string that is a file name.
+class LoadStoragesTestCase(TestCase):
 
     def _check_file_response(self, response, filename, file_content):
         self.assertEqual(response.status_code, 200,
@@ -69,39 +81,53 @@ class LoadTestCase(TestCase):
         self.assertEqual(response.content.decode(), test_file_content,
                          'The response data is invalid.')
 
-    @classmethod
-    def setUpTestData(cls):
-        file_store_path = getattr(local_settings, 'FILE_STORE_PATH', None)
-        LOG.debug('File store path in %s setup: %s'
-                  % (__name__, file_store_path))
-        cls.FILE_STORE_PATH = file_store_path
-        local_settings.STORAGES_BACKEND = None
-        django_drf_filepond.api.storage_backend = None
-
     def setUp(self):
+        self.file_store_path = getattr(local_settings,
+                                       'FILE_STORE_PATH', None)
+
+        local_settings.STORAGES_BACKEND = \
+            'storages.backends.sftpstorage.SFTPStorage'
+
+        # Setting up a mock for the storage backend based on examples at
+        # https://docs.python.org/3.7/library/unittest.mock-examples.html# \
+        # applying-the-same-patch-to-every-test-method
+        patcher = patch('storages.backends.sftpstorage.SFTPStorage')
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+        # Mock the temporary storage object so that we're not unnecessarily
+        # saving files to the local file system.
+        patcher2 = patch('django.core.files.storage.FileSystemStorage')
+        patcher2.start()
+        self.addCleanup(patcher2.stop)
+
+        # Reinitialse stored upload after we changed the STORAGES_BACKEND
+        # class name above. This ensures that we're looking at the mocked
+        # backend class.
+        import django_drf_filepond.api
+        django_drf_filepond.api.storage_backend_initialised = False
+        django_drf_filepond.api._init_storage_backend()
+        self.mock_storage_backend = django_drf_filepond.api.storage_backend
+
         # Set up an initial file upload
         self.upload_id = _get_file_id()
         self.file_id = _get_file_id()
-        self.file_content = ('This is some test file data for an '
-                             'uploaded file.')
+        self.file_content = (b'This is some test file data for an '
+                             b'uploaded file.')
         self.fn = 'my_test_file.txt'
         self.test_filename = 'sdf5dua32defh754dhsrr2'
-        uploaded_file = SimpleUploadedFile(self.fn,
-                                           str.encode(self.file_content))
-        tu = TemporaryUpload(upload_id=self.upload_id,
-                             file_id=self.file_id,
-                             file=uploaded_file, upload_name=self.fn,
-                             upload_type=TemporaryUpload.FILE_DATA)
-        tu.save()
+
+        # Set up the mock_storage_backend.open to return the file content
+        self.mock_storage_backend.open.return_value = BytesIO(
+            self.file_content)
 
         # Now set up a stored version of this upload
         su = StoredUpload(upload_id=self.upload_id,
-                          file_path=('%s'
-                                     % (self.fn)),
-                          uploaded=tu.uploaded)
+                          file_path=('%s' % (self.fn)),
+                          uploaded=timezone.now())
         su.save()
 
-    def test_load_incorrect_method(self):
+    def test_load_remote_incorrect_method(self):
         response_post = self.client.post((reverse('load') +
                                           ('?id=%s' % self.upload_id)))
         response_del = self.client.delete((reverse('load') +
@@ -117,64 +143,35 @@ class LoadTestCase(TestCase):
         self.assertContains(response, 'A required parameter is missing.',
                             status_code=400)
 
-    def test_load_blank_id(self):
+    def test_load_remote_blank_id(self):
         response = self.client.get((reverse('load') + '?id='))
         self.assertContains(response, 'An invalid ID has been provided.',
                             status_code=400)
 
-    def test_load_id_notfound_error(self):
+    def test_load_remote_id_notfound_error(self):
         response = self.client.get((reverse('load') +
                                     ('?id=sdfsdu732defh754dhsrr2')))
         self.assertContains(response, 'Not found', status_code=404)
 
-    def test_load_id_file_notfound_error(self):
+    def test_load_remote_id_file_notfound_error(self):
+        self.mock_storage_backend.open.side_effect = FileNotFoundError(
+            'Unable to open requested file...')
         response = self.client.get((reverse('load') +
                                     ('?id=%s' % self.upload_id)))
         self.assertContains(response, 'Error accessing file, not found.',
                             status_code=404)
 
-    def test_load_uploadid_successful_request(self):
-        su = StoredUpload.objects.get(upload_id=self.upload_id)
-        tu = TemporaryUpload.objects.get(upload_id=self.upload_id)
-        su_target_dir = os.path.join(LoadTestCase.FILE_STORE_PATH,
-                                     os.path.dirname(su.file_path))
-        if not os.path.exists(su_target_dir):
-            os.mkdir(su_target_dir)
-        shutil.copy2(tu.get_file_path(), os.path.join(
-            LoadTestCase.FILE_STORE_PATH, su.file_path))
-
+    def test_load_remote_uploadid_successful_request(self):
         response = self.client.get((reverse('load') +
                                     ('?id=%s' % self.upload_id)))
         self._check_file_response(response, self.fn, self.file_content)
 
-    def test_load_filename_successful_request(self):
-        su = StoredUpload.objects.get(upload_id=self.upload_id)
-        tu = TemporaryUpload.objects.get(upload_id=self.upload_id)
-        su_target_dir = os.path.join(LoadTestCase.FILE_STORE_PATH,
-                                     os.path.dirname(su.file_path))
-        if not os.path.exists(su_target_dir):
-            os.mkdir(su_target_dir)
-        shutil.copy2(tu.get_file_path(), os.path.join(
-            LoadTestCase.FILE_STORE_PATH, su.file_path))
-
+    def test_load_remote_filename_successful_request(self):
         response = self.client.get((reverse('load') + '?id=%s' % self.fn))
         self._check_file_response(response, self.fn, self.file_content)
 
-    def test_load_ambiguous_id_file(self):
+    def test_load_remote_ambiguous_id_file(self):
         su = StoredUpload.objects.get(upload_id=self.upload_id)
-        tu = TemporaryUpload.objects.get(upload_id=self.upload_id)
-        su_target_dir = os.path.join(LoadTestCase.FILE_STORE_PATH,
-                                     os.path.dirname(su.file_path))
-        if not os.path.exists(su_target_dir):
-            os.mkdir(su_target_dir)
-        shutil.copy2(tu.get_file_path(), os.path.join(
-            LoadTestCase.FILE_STORE_PATH, su.file_path))
-
-        existing_path = os.path.join(LoadTestCase.FILE_STORE_PATH,
-                                     su.file_path)
-        existing_path_dir = os.path.dirname(existing_path)
-        os.rename(existing_path,
-                  os.path.join(existing_path_dir, self.test_filename))
         su.file_path = os.path.join(os.path.dirname(su.file_path),
                                     self.test_filename)
         su.save()
@@ -182,20 +179,6 @@ class LoadTestCase(TestCase):
                                     '?id=%s' % self.test_filename))
         self._check_file_response(response, self.test_filename,
                                   self.file_content)
-
-    def test_load_filename_invalid_filestore_setting(self):
-        su = StoredUpload.objects.get(upload_id=self.upload_id)
-        fspath = local_settings.FILE_STORE_PATH
-        local_settings.FILE_STORE_PATH = None
-        try:
-            response = self.client.get((reverse('load') + '?id=%s'
-                                        % su.upload_id))
-            self.assertContains(
-                response,
-                'The file upload settings are not configured correctly.',
-                status_code=500)
-        finally:
-            local_settings.FILE_STORE_PATH = fspath
 
     def tearDown(self):
         upload_tmp_base = getattr(local_settings, 'UPLOAD_TMP', None)
