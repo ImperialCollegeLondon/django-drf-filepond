@@ -4,6 +4,8 @@
 
 **django-drf-filepond** is a Django app that provides a [filepond](https://github.com/pqina/filepond) server-side implementation for Django/Django REST Framework projects. The app can be easily added to your Django projects to provide a server-side API for the filepond file upload library.
 
+:new: Now with support for remote file storage via [*django-storages*](https://django-storages.readthedocs.io/) in v0.2.0.
+
 Further documentation and a tutorial are available at [https://django-drf-filepond.readthedocs.io](https://django-drf-filepond.readthedocs.io).
 
 #### Installation
@@ -60,6 +62,87 @@ urlpatterns = [
 ```
 
 On the client side, you need to set the endpoints of the `process`, `revert`, `fetch`, `load` and `restore` functions to match the endpoint used in your path statement above. For example if the first parameter to `url` is `fp/` then the endpoint for the process function will be `/fp/process/`.
+
+###### (Optional) 4. File storage configuration
+
+Initially, uploaded files are stored in a temporary staging area (the location you set in item 2 above, with the `DJANGO_DRF_FILEPOND_UPLOAD_TMP` parameter. At this point, an uploaded file is still shown in the filepond UI on the client and the user can choose to cancel the upload resulting in the file being deleted from temporary storage and the upload being cancelled. When a user confirms a file upload, e.g. by submitting the form in which the filepond component is embedded, any temporary uploads need to be moved to a permanent storage location.
+
+There are three different options for file storage:
+
+- Use a location on a local filesystem on the host server for file storage 
+  (see Section 4.1)
+   
+- **\*NEW\*** Use a remote file storage backend via the [*django-storages*](https://django-storages.readthedocs.io/en/latest>) library (see Section 4.2)
+
+- Manage file storage yourself, independently of *django-drf-filepond* (in this case, filepond ``load`` functionality is not supported)
+
+More detailed information on handling file uploads and using the *django-drf-filepond* API to store them is provided in the *Working with file uploads* section below.
+
+###### 4.1 Storage of filepond uploads using the local file system
+
+To use the local filesystem for storage, you need to specify where to store files. Set the `DJANGO_DRF_FILEPOND_FILE_STORE_PATH` parameter in your Django application settings file to specify the base location where stored uploads will be placed, e.g.:
+
+```python
+...
+DJANGO_DRF_FILEPOND_FILE_STORE_PATH = os.path.join(BASE_DIR, 'stored_uploads')
+...
+```
+
+The specified path for each stored upload will then be created relative to this location. For example, given the setting shown above, if `BASE_DIR` were `/tmp/django-drf-filepond`, then a temporary upload with the specified target location of either `/mystoredupload/uploaded_file.txt` or `mystoredupload/uploaded_file.txt` would be stored to `/tmp/django-drf-filepond/stored_uploads/mystoredupload/uploaded_file.txt`
+
+When using local file storage, `DJANGO_DRF_FILEPOND_FILE_STORE_PATH` is the only required setting.
+
+###### 4.2 Remote storage of filepond uploads via django-storages
+
+The [*django-storages*](https://github.com/jschneier/django-storages>) library provides support for a number of different remote file storage backends. The [django-storages documentation](https://django-storages.readthedocs.io/en/latest) lists the supported backends.
+
+To enable *django-storages* support for django-drf-filepond, set the `DJANGO_DRF_FILEPOND_STORAGES_BACKEND` parameter in your application configuration to the *django-storages* backend that you wish to use. You need to specify the fully-qualified class name for the storage backend that you want to use. This is the same value that would be used for the *django-storages* `DEFAULT_FILE_STORAGE` parameter and the required value can be found either by looking at the [django-storages documentation](https://django-storages.readthedocs.io/en/latest) for the backend that you want to use, or by looking at the [code on GitHub](https://github.com/jschneier/django-storages/tree/master/storages/backends).
+
+For example, if you want to use the SFTP storage backend, add the following to your application settings:
+
+```python
+...
+DJANGO_DRF_FILEPOND_STORAGES_BACKEND = \
+	'storages.backends.sftpstorage.SFTPStorage'
+...
+```
+
+or, for the Amazon S3 backend:
+
+```python
+...
+DJANGO_DRF_FILEPOND_STORAGES_BACKEND = 'storages.backends.s3boto3.S3Boto3Storage'
+...
+```
+
+For each storage backend, there are a number of additional *django-storages* configuration options that must be specified. These are detailed in the *django-storages* documentation.
+
+The following is an example of a complete set of configuration parameters for using an Amazon S3 storage backend for django-drf-filepond via django-storages:
+
+```python
+	...
+	DJANGO_DRF_FILEPOND_STORAGES_BACKEND = 'storages.backends.s3boto3.S3Boto3Storage'
+	AWS_ACCESS_KEY_ID = '<YOUR AWS ACCESS KEY>'
+	AWS_SECRET_ACCESS_KEY = '<YOUR AWS SECRET KEY>'
+	AWS_STORAGE_BUCKET_NAME = 'django-drf-filepond'
+	AWS_AUTO_CREATE_BUCKET = True
+	AWS_S3_REGION_NAME = 'eu-west-1'
+	...
+```
+
+*NOTE: django-storages is now included as a core dependency of django-drf-filepond. However, the different django-storages backends each have their own additional dependencies __which you need to install manually__ or add to your own app's dependencies.*
+	
+*You can add additional dependencies using* `pip` *by specifying the optional extras feature tag, e.g. to install additional dependencies required for django-storages' Amazon S3 support run*:
+
+```shell
+	$ pip install django-storages[boto3]
+```	
+
+See the *Working with file uploads* section for more details on how to use the django-drf-filepond API to store files to a local or remote file store. 
+
+*NOTE:* `DJANGO_DRF_FILEPOND_FILE_STORE_PATH` *is not used when using a remote file store backend. It is recommended to remove this setting or leave it set to None.*
+	
+*The base storage location for a remote file storage backend from django-storages is set using a setting specific to the backend that you are using - see the django-storages documentation for your chosen backend for further information.*
 
 ###### (Optional) 4. Set the permanent file store location
 
