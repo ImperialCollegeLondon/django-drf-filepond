@@ -388,3 +388,5 @@ def delete_stored_upload(upload_id, delete_file=False):
 
         # TODO: Need to look at how best to delete directories that may have
         # been created to store the file. For now, we just delete the file.
+
+    return True
