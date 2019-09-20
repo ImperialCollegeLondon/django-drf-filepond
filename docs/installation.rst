@@ -132,8 +132,8 @@ only required setting.
 4.2 Remote storage of filepond uploads via django-storages
 ---------------------------------------------------------------------
 
-The `django-storages <https://github.com/jschneier/django-storages>`_ 
-library provides support for a number of different remote file storage 
+The `django-storages library <https://github.com/jschneier/django-storages>`_
+provides support for a number of different remote file storage 
 backends. The `django-storages documentation <https://django-storages.readthedocs.io/en/latest>`_ 
 lists the supported backends. 
 
@@ -161,22 +161,50 @@ or, for the Amazon S3 backend::
 	DJANGO_DRF_FILEPOND_STORAGES_BACKEND = 'storages.backends.s3boto3.S3Boto3Storage'
 	...
 
-For each storage backend, there are a number of additional django-storages 
+For the Azure Storage backend, set::
+
+	...
+	DJANGO_DRF_FILEPOND_STORAGES_BACKEND = 'storages.backends.azure_storage.AzureStorage'
+	...
+
+For the Google Cloud Storage backend, set::
+
+	...
+	DJANGO_DRF_FILEPOND_STORAGES_BACKEND = 'storages.backends.gcloud.GoogleCloudStorage'
+	...
+
+*django-storages* provides support for several other storage backends including
+`Digital Ocean <https://django-storages.readthedocs.io/en/latest/backends/digital-ocean-spaces.html>`_
+and `Dropbox <https://django-storages.readthedocs.io/en/latest/backends/dropbox.html>`_.
+
+For each storage backend, there are a number of additional *django-storages* 
 configuration options that must be specified. These are detailed in the 
-django-storages documentation.
+*django-storages* documentation. The specific set of parameters that you
+need to provide depends on your chosen storage backend configuration. 
 
-The following is an example of a complete set of configuration parameters 
-for using an Amazon S3 storage backend for django-drf-filepond via 
-django-storages::
+As an example, if you are using the Amazon S3 storage backend
+and want to store uploads into a bucket named *filepond-uploads* in the
+*eu-west-1* region, with the bucket and files set to be accessible only by
+the user specified using the access/secret key, you would provide the
+following set of parameters in your application's ``settings.py`` file::
 
-	...
 	DJANGO_DRF_FILEPOND_STORAGES_BACKEND = 'storages.backends.s3boto3.S3Boto3Storage'
-	AWS_ACCESS_KEY_ID = '<YOUR AWS ACCESS KEY>'
-	AWS_SECRET_ACCESS_KEY = '<YOUR AWS SECRET KEY>'
-	AWS_STORAGE_BUCKET_NAME = 'django-drf-filepond'
-	AWS_AUTO_CREATE_BUCKET = True
+	AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
+	AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
 	AWS_S3_REGION_NAME = 'eu-west-1'
-	...
+	AWS_STORAGE_BUCKET_NAME = 'filepond-uploads'	
+	AWS_DEFAULT_ACL = 'private'
+	AWS_BUCKET_ACL = 'private'
+	AWS_AUTO_CREATE_BUCKET = True
+
+Note that the ACL for the bucket and the default ACL for files are set to
+private. There may well be other security-related parameters that you will
+want/need to set to ensure the security of the files on your chosen storage
+backend. The configuration here provides an example but you should read the
+*django-storages* docuemntation for your chosen backend and documentation
+for the associated storage platform to ensure that you understand the
+parameters that you are setting and any related potential security issues
+that may result from your configuration. 
 
 .. note:: django-storages is now included as a core dependency of 
 	django-drf-filepond. However, the different django-storages backends 

@@ -31,14 +31,7 @@ There are two different approaches for handling files that need to be stored
 permanently on a server after being uploaded from a filepond client via 
 django-drf-filepond. *These two approaches are not mutually exclusive and 
 you can choose to use one approach for some files and the other approach for 
-other files if you wish.*
-
-Your application can either handle file uploads manually, by interacting 
-directly with django-drf-filepond's ``TemporaryUpload`` model to find and 
-store the uploaded files, or it can use django-drf-filepond's API to store    
-files. Using the latter approach, you can also make use of filepond's 
-``load`` method which is not possible if you choose to manage file storage 
-independently of django-drf-filepond.  
+other files if you wish.* 
 
 1. Use django-drf-filepond's API to store a temporary upload to permanent storage *(recommended)*
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -46,10 +39,55 @@ independently of django-drf-filepond.
 .. note:: You must use this approach for storing any files that you 
 	subsequently want to access using filepond's ``load`` function.
 
-Using this approach, the file is stored either to a location on the host 
-server under the *django-drf-filepond* file storage directory as set by the 
-``DJANGO_DRF_FILEPOND_FILE_STORE_PATH`` setting, or on a remote file storage 
-system via django-storages if you have this configured.::
+Using this approach, the file is stored either to local storage or to a
+remote storage service depending on the file store configuration you are
+using.
+
+1.1 ``store_upload``
+#####################
+
+``store_upload`` stores a temporary upload, uploaded as a result of adding
+it to the filepond component in a web page, to permanent storage. 
+
+If you have configured *django-drf-filepond* to use local file storage by
+setting the ``DJANGO_DRF_FILEPOND_FILE_STORE_PATH`` parameter in your
+application settings, the file will be stored to a location under this
+directory.
+
+If you have configured a remote file store via *django-storages*, the stored
+upload will be sent to the configured storage backend via *django-storages*.
+
+**Parameters:**
+
+``upload_id``: The unique ID assigned to the upload by *django-drf-filepond*
+when the file was initially uploaded via filepond.
+
+``destination_file_path``: The location where the file should be stored.
+This location will be appended to the base file storage location as defined
+using the `DJANGO_DRF_FILEPOND_FILE_STORE_PATH` parameter, or, for remote
+storage backends, the location configured using the relevant
+*django-storages* parameters. If you pass an absolute path beginning with
+``/``, the leading ``/`` will be removed. The path that you provide should
+also include the target filename.
+
+**Returns:**
+
+A ``django_drf_filepond.models.StoredUpload`` object representing the
+stored upload.
+
+Raises ``django.core.exceptions.ImproperlyConfigured`` if using a local
+file store and `DJANGO_DRF_FILEPOND_FILE_STORE_PATH` has not been set.
+
+**Raises** ``ValueError`` **if:**
+
+ - an ``upload_id`` is provided in an invalid format
+ - the ``destination_file_path`` is not provided
+ - a ``django_drf_filepond.models.TemporaryUpload`` record for the provided
+   ``upload_id`` is not found
+
+**Example:**
+
+.. code:: python
 
 	from django_drf_filepond.api import store_upload
 	
@@ -58,95 +96,89 @@ system via django-storages if you have this configured.::
 	# destination_file_path is a relative path (including target filename. 
 	# The path will created under the file store directory and the original 
 	# temporary upload will be deleted.
+
+1.2 ``get_stored_upload`` / ``get_stored_upload_file_data``
+############################################################
+
+Get access to a stored upload and the associated file data.
+
+``get_stored_upload``: Given an ``upload_id``, return the associated 
+``django_drf_filepond.models.StoredUpload`` object.
+
+Throws ``django_drf_filepond.models.StoredUpload.DoesNotExist`` if a
+database record doesn't exist for the specified ``upload_id``.
+
+``get_stored_upload_file_data``: Given a StoredUpload object, return the
+file data for the upload as a Python
+`file-like object <https://docs.python.org/3/glossary.html#term-file-like-object>`_.
+
+**Parameters:**
+
+``stored_upload``: A ``django_drf_filepond.models.StoredUpload`` object for
+which you want retrieve the file data.
+
+**Returns:**
+
+Returns a tuple ``(filename, bytes_io)`` where ``filename`` is a string
+representing the name of the stored file being returned and ``bytes_io``
+is an ``io.BytesIO`` object from which the file data can be read. If an
+error occurs, raises an exception:
+
+ - ``django_drf_filepond.exceptions.ConfigurationError``: Thrown if using a local file store and ``DJANGO_DRF_FILEPOND_FILE_STORE_PATH`` is not set or the specified location does not exist, or is not a directory. 
+ 
+ - ``FileNotFoundError``: Thrown if using a remote file store and the file store API reports that the file doesn't exist. If using a local file store, thrown if the file does not exist or the location is a directory and not a file.
+ 
+ - ``IOError``: Thrown if using a local file store and reading the file fails.
+
+**Example:**
+
+.. code:: python
+
+	from django_drf_filepond.api import get_stored_upload
+	from django_drf_filepond.api import get_stored_upload_file_data
 	
-The ``destination_file_path`` parameter passed to ``store_upload`` should 
-be relative to the base upload location. 
-
-If the file is being stored on the local server, this is defined by the 
-``DJANGO_DRF_FILEPOND_FILE_STORE_PATH`` parameter in your *settings.py* 
-file. If you pass a path that begins with ``/``, the leading ``/`` will be 
-removed and the path will be interpreted as being relative to 
-``DJANGO_DRF_FILEPOND_FILE_STORE_PATH``. The path that you provide should 
-include the filename that you would like the file stored as.
-
-If the file is being stored to a remote location via *django-storages*, the
-*DJANGO_DRF_FILEPOND_FILE_STORE_PATH* configuration parameter does NOT apply
-and should be removed or set to ``None``. Instead, the base file store
-location is set using *django-storages* parameters that are specific to the
-storage backend that you're using. See section 1.1 below on configuring
-remote file storage for further details.
-
-When using remote storage, the file being stored will be placed at the
-location defined by ``destination_file_path``, relative to the base file
-store location. If you pass a path that begins with ``/``, the leading ``/``
-will be removed and the path will become relative. For example, if you are
-using Amazon S3-based storage, then your file will be stored at the
-specified location within the bucket configured in your *django-storages*
-configuration provided in your app's ``settings.py``.
-
-A call to ``store_upload`` returns an instance of 
-``django_drf_filepond.models.StoredUpload``. A stored upload object is 
-identified by a unique ``upload_id``. You can use this value to lookup the 
-database record associated with a stored file at a later time. Via the 
-``StoredUpload`` database record you can *read* the stored file or *delete* 
-it. File deletion is subject to support within the *django-storages* backend 
-that you're using.
-
-1.1. Configuring remote file storage
-#####################################
-
-As highlighted above, remote file storage support is provided through the
-`django-storages <https://github.com/jschneier/django-storages>`_ library.
-
-To configure remote file storage, set the ``DJANGO_DRF_FILEPOND_STORAGES_BACKEND``
-parameter in your application's ``settings.py`` file to specify the 
-*django-storages* backend that you wish to use. See the 
-`django-storages documentation <https://django-storages.readthedocs.io/en/latest/index.html>`_
-for the storage backend that you wish to use. The value specified for the
-*django-storages* *DEFAULT_FILE_STORAGE* parameter is the value you should
-set ``DJANGO_DRF_FILEPOND_STORAGES_BACKEND`` to. For example:
-
-For the Amazon S3 backend, set::
-
-	DJANGO_DRF_FILEPOND_STORAGES_BACKEND = 'storages.backends.s3boto3.S3Boto3Storage'
-
-For the Azure Storage backend, set::
-
-	DJANGO_DRF_FILEPOND_STORAGES_BACKEND = 'storages.backends.azure_storage.AzureStorage'
-
-For the Google Cloud Storage backend, set::
-
-	DJANGO_DRF_FILEPOND_STORAGES_BACKEND = 'storages.backends.gcloud.GoogleCloudStorage'
+	# Given a variable upload_id containing a 22-character unique 
+	# upload ID representing a stored upload:
+	su = get_store_upload(upload_id)
+	(filename, bytes_io) = get_store_upload_file_data(su)
+	file_data = bytes_io.read()
 	
-*django-storages* provides support for several other storage backends including
-`Digital Ocean <https://django-storages.readthedocs.io/en/latest/backends/digital-ocean-spaces.html>`_
-and `Dropbox <https://django-storages.readthedocs.io/en/latest/backends/dropbox.html>`_.
+1.3 ``delete_stored_upload``
+#############################
 
-Once you have set ``DJANGO_DRF_FILEPOND_STORAGES_BACKEND`` you will need to
-set a number of additional configuration parameters specific to your chosen
-backend. These are detailed in the *django-storages* documentation. The
-specific set of parameters that you need to provide depends on your chosen
-storage backend configuration. 
+``delete_stored_upload`` deletes a stored upload record and, optionally,
+the associated file that is stored on either a local disk or a remote file
+storage service.
 
-As an example, if you are using the Amazon S3 storage backend
-and want to store uploads into a bucket named *filepond-uploads* in the
-*eu-west-1* region, with the bucket and files set to be accessible only by
-the user set using the access/secret key, you would provide the following
-set of parameters in your application's ``settings.py`` file::
+**Parameters:**
 
-	DJANGO_DRF_FILEPOND_STORAGES_BACKEND = 'storages.backends.s3boto3.S3Boto3Storage'
-	AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
-	AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
-	AWS_S3_REGION_NAME = 'eu-west-1'
-	AWS_STORAGE_BUCKET_NAME = 'filepond-uploads'	
-	AWS_DEFAULT_ACL = 'private'
-	AWS_BUCKET_ACL = 'private'
-	AWS_AUTO_CREATE_BUCKET = True
+``upload_id``: The unique ID assigned to the upload by *django-drf-filepond*
+when the file was initially uploaded via filepond.
 
-Note that the ACL for the bucket and the default ACL for files are set to
-private. There may well be other security-related parameters that you will
-want/need to set to ensure the security of the files on your chosen storage
-backend. The configuration here provides an example but it See the warning at the start of the tutorial about file security
+``delete_file``: ``True`` to delete the file associated with the record,
+``False`` to leave the file in place.
+
+**Returns:**
+
+Returns ``True`` if the stored upload is deleted successfully, otherwise
+raises an exception:
+
+ - ``django_drf_filepond.models.StoredUpload.DoesNotExist`` exception if no upload exists for the specified ``upload_id``.
+ - ``django_drf_filepond.exceptions.ConfigurationError``: Thrown if using a local file store and ``DJANGO_DRF_FILEPOND_FILE_STORE_PATH`` is not set or the specified location does not exist, or is not a directory.
+ - ``FileNotFoundError``: Thrown if using a remote file store and the file store API reports that the file doesn't exist. If using a local file store, thrown if the file does not exist or the location is a directory and not a file.
+ - ``OSError``: Thrown if using a local file store and the file deletion fails.
+
+**Example:**
+
+.. code:: python
+
+	from django_drf_filepond.api import delete_stored_upload
+	
+	# Given a variable upload_id containing a 22-character unique 
+	# upload ID representing a stored upload:
+	delete_stored_upload(upload_id, delete_file=True)
+	# delete_file=True will delete the file from the local 
+	# disk or the remote storage service. 
  
 2. Manual handling of file storage
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -157,7 +189,9 @@ the file then becomes independent of *django-drf-filepond*. The following
 example shows how to lookup a temporary upload given its unique upload ID 
 and move it to a permanent storage location. The temporary upload record 
 is then deleted and *django-drf-filepond* no longer has any awareness of 
-the file::
+the file:
+
+.. code:: python
 
 	import os
 	from django_drf_filepond.models import TemporaryUpload
