@@ -303,4 +303,4 @@ This repository is licensed under a BSD 3-Clause license. Please see the [LICENS
 
 Thanks to [pqina](https://github.com/pqina) for producing the [filepond](https://pqina.nl/filepond/) file upload library that this Django app provides server-side support for.
 
-The django-drf-filepond app has been built as part of work that is being supported by UK Research and Innovation (Engineering and Phsycial Sciences Research Council) under grant EP/R025460/1.
+The django-drf-filepond app has been built as part of work that is being supported by UK Research and Innovation (Engineering and Physical Sciences Research Council) under grant EP/R025460/1.
