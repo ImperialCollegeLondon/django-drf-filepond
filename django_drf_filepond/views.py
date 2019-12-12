@@ -15,6 +15,7 @@ from rest_framework.exceptions import ParseError, NotFound
 from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
 import shortuuid
 
 from django_drf_filepond.models import TemporaryUpload, storage, StoredUpload
@@ -75,6 +76,7 @@ class ProcessView(APIView):
     # from FilePond.
     parser_classes = (MultiPartParser,)
     renderer_classes = (PlainTextRenderer,)
+    permission_classes = (IsAuthenticated,)
 
     def post(self, request):
         LOG.debug('Filepond API: Process view POST called...')
