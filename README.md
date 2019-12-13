@@ -295,6 +295,22 @@ delete_stored_upload(upload_id, delete_file=True)
 # disk or the remote storage service.
 ``` 
 
+#### DRF Permissions
+
+By default no permissions are applied on API endpoints. If you want to assign certain permissions such as ```rest_framework.permissions.IsAuthenticated``` you can do it like so:
+
+```python
+DJANGO_DRF_FILEPOND_PERMISSION_CLASSES = {
+    'GET_FETCH': ['rest_framework.permissions.IsAuthenticated', ],
+    'GET_LOAD': ['rest_framework.permissions.IsAuthenticated', ],
+    'POST_PROCESS': ['rest_framework.permissions.IsAuthenticated', ],
+    'GET_RESTORE': ['rest_framework.permissions.IsAuthenticated', ],
+    'DELETE_REVERT': ['rest_framework.permissions.IsAuthenticated', ],
+}
+```
+
+You can add more than one permission for each endpoint.
+
 ### License
 
 This repository is licensed under a BSD 3-Clause license. Please see the [LICENSE](LICENSE) file in the root of the repository.

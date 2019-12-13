@@ -1,33 +1,33 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-from io import BytesIO
+import importlib
 import logging
+import mimetypes
 
 import django_drf_filepond.drf_filepond_settings as local_settings
+import os
+import re
+import requests
+import shortuuid
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import UploadedFile, InMemoryUploadedFile
 from django.core.validators import URLValidator
-import requests
+from django.http.response import HttpResponse, HttpResponseNotFound, \
+    HttpResponseServerError
+from django_drf_filepond.api import get_stored_upload, \
+    get_stored_upload_file_data
+from django_drf_filepond.exceptions import ConfigurationError
+from django_drf_filepond.models import TemporaryUpload, storage, StoredUpload
+from django_drf_filepond.parsers import PlainTextParser
+from django_drf_filepond.renderers import PlainTextRenderer
+from io import BytesIO
 from requests.exceptions import ConnectionError
 from rest_framework import status
 from rest_framework.exceptions import ParseError, NotFound
 from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
-import shortuuid
-
-from django_drf_filepond.models import TemporaryUpload, storage, StoredUpload
-from django_drf_filepond.parsers import PlainTextParser
-from django_drf_filepond.renderers import PlainTextRenderer
-import re
-import os
-import mimetypes
-from django.http.response import HttpResponse, HttpResponseNotFound,\
-    HttpResponseServerError
-from django_drf_filepond.api import get_stored_upload,\
-    get_stored_upload_file_data
-from django_drf_filepond.exceptions import ConfigurationError
 
 LOG = logging.getLogger(__name__)
 
@@ -62,6 +62,21 @@ def _get_content_type(data, temporary=True):
     return mimetypes.guess_type(data)[0]
 
 
+def _import_permission_classes(endpoint):
+    """
+    Iterates over array of string representations of permission classes from
+    settings specified.
+    """
+    permission_classes = []
+    if hasattr(local_settings, 'PERMISSION_CLASSES') and endpoint in local_settings.PERMISSION_CLASSES.keys():
+        for perm_str in local_settings.PERMISSION_CLASSES[endpoint]:
+            (modname, clname) = perm_str.rsplit('.', 1)
+            mod = importlib.import_module(modname)
+            class_ = getattr(mod, clname)
+            permission_classes.append(class_)
+    return permission_classes
+
+
 class ProcessView(APIView):
     '''
     This view receives an uploaded file from the filepond client. It
@@ -75,6 +90,7 @@ class ProcessView(APIView):
     # from FilePond.
     parser_classes = (MultiPartParser,)
     renderer_classes = (PlainTextRenderer,)
+    permission_classes = _import_permission_classes('POST_PROCESS')
 
     def post(self, request):
         LOG.debug('Filepond API: Process view POST called...')
@@ -82,7 +98,7 @@ class ProcessView(APIView):
         # Enforce that the upload location must be a sub-directory of
         # the project base directory
         # TODO: Check whether this is necessary - maybe add a security
-        # parameter that can be disabled to turn off this check if the
+        # parameter that can be disabled to turn off this check if th
         # developer wishes?
         if ((not hasattr(local_settings, 'UPLOAD_TMP')) or
                 (not (storage.location).startswith(local_settings.BASE_DIR))):
@@ -143,6 +159,7 @@ class RevertView(APIView):
 
     parser_classes = (PlainTextParser,)
     renderer_classes = (PlainTextRenderer,)
+    permission_classes = _import_permission_classes('DELETE_REVERT')
     '''
     This is called when we need to revert the uploaded file - i.e. undo is
     pressed and we remove the previously uploaded temporary file.
@@ -183,6 +200,8 @@ class LoadView(APIView):
     directory specified by the DJANGO_DRF_FILEPOND_FILE_STORE_PATH
     setting parameter).
     """
+    permission_classes = _import_permission_classes('GET_LOAD')
+
     def get(self, request):
         LOG.debug('Filepond API: Load view GET called...')
 
@@ -225,6 +244,7 @@ class LoadView(APIView):
 
 
 class RestoreView(APIView):
+    permission_classes = _import_permission_classes('GET_RESTORE')
 
     # Expect the upload ID to be provided with the 'name' parameter
     def get(self, request):
@@ -268,6 +288,7 @@ class RestoreView(APIView):
 
 
 class FetchView(APIView):
+    permission_classes = _import_permission_classes('GET_FETCH')
 
     def _process_request(self, request):
         LOG.debug('Filepond API: Fetch view GET called...')
