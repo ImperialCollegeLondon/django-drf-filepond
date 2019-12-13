@@ -68,7 +68,7 @@ def _import_permission_classes(endpoint):
     settings specified.
     """
     permission_classes = []
-    if hasattr(local_settings, 'PERMISSION_CLASSES') and hasattr(local_settings.PERMISSION_CLASSES, endpoint):
+    if hasattr(local_settings, 'PERMISSION_CLASSES') and endpoint in local_settings.PERMISSION_CLASSES.keys():
         for perm_str in local_settings.PERMISSION_CLASSES[endpoint]:
             (modname, clname) = perm_str.rsplit('.', 1)
             mod = importlib.import_module(modname)
