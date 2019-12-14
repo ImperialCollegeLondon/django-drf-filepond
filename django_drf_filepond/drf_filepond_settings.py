@@ -50,3 +50,11 @@ STORAGES_BACKEND = getattr(settings, _app_prefix+'STORAGES_BACKEND', None)
 # django-drf-filepond's file management and the api.store_upload function
 # will not be usable - you will need to manage file storage in your code.
 FILE_STORE_PATH = getattr(settings, _app_prefix+'FILE_STORE_PATH', None)
+
+# If you want to use an external directory (a directory outside of your 
+# project directory) to store temporary uploads, this setting needs to be 
+# set to true. By default it is False to prevent uploads being stored 
+# elsewhere.
+ALLOW_EXTERNAL_UPLOAD_DIR = getattr(settings, 
+                                    _app_prefix+'ALLOW_EXTERNAL_UPLOAD_DIR',
+                                    False)
