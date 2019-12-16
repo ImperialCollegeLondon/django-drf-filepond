@@ -56,6 +56,15 @@ variable to your settings file, e.g.::
 	``filepond_uploads`` directory in the ``django-drf-filepond`` app  
 	directory, wherever that is located. Note that this may be within the  
 	``lib`` directory of a virtualenv.
+	
+.. note:: If you wish to set your file upload location to an directory
+	outside of your Django application, i.e. something that is not below
+	BASE_DIR, you should consider any security implications that may result
+	from letting the app write to another location on disk and set the
+	``DJANGO_DRF_FILEPOND_ALLOW_EXTERNAL_UPLOAD_DIR`` to ``True`` to confirm
+	that you want to use a directory external to your application to store
+	temporary uploads.
+
 
 3. Include the app urls into your main url configuration
 ========================================================

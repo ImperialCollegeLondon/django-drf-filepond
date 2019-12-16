@@ -28,6 +28,7 @@ from django.http.response import HttpResponse, HttpResponseNotFound,\
 from django_drf_filepond.api import get_stored_upload,\
     get_stored_upload_file_data
 from django_drf_filepond.exceptions import ConfigurationError
+import django_drf_filepond
 
 LOG = logging.getLogger(__name__)
 
@@ -79,16 +80,32 @@ class ProcessView(APIView):
     def post(self, request):
         LOG.debug('Filepond API: Process view POST called...')
 
-        # Enforce that the upload location must be a sub-directory of
-        # the project base directory
-        # TODO: Check whether this is necessary - maybe add a security
-        # parameter that can be disabled to turn off this check if the
-        # developer wishes?
-        if ((not hasattr(local_settings, 'UPLOAD_TMP')) or
-                (not (storage.location).startswith(local_settings.BASE_DIR))):
+        # Check that the temporary upload directory has been set
+        if not hasattr(local_settings, 'UPLOAD_TMP'):
             return Response('The file upload path settings are not '
                             'configured correctly.',
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        # By default, enforce that the temporary upload location must be a
+        # sub-directory of the project base directory.
+        # TODO: Check whether this is necessary - maybe add a security
+        # parameter that can be disabled to turn off this check if the
+        # developer wishes?
+        if ((not (storage.location).startswith(local_settings.BASE_DIR)) and
+                (local_settings.BASE_DIR != 
+                 os.path.dirname(django_drf_filepond.__file__))):
+            if not local_settings.ALLOW_EXTERNAL_UPLOAD_DIR:
+                return Response('The file upload path settings are not '
+                            'configured correctly.',
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        # Check that a relative path is not being used to store the
+        # upload outside the specified UPLOAD_TMP directory.
+        if not getattr(local_settings, 'UPLOAD_TMP').startswith(
+                os.path.abspath(storage.location)):
+            return Response('An invalid storage location has been '
+                    'specified.',
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         # Check that we've received a file and then generate a unique ID
         # for it. Also generate a unique UD for the temp upload dir
@@ -126,6 +143,9 @@ class ProcessView(APIView):
         #    LOG.debug('Filepond app: Creating file upload directory '
         #             '<%s>...' % storage.location)
         #    os.makedirs(storage.location, mode=0o700)
+
+        LOG.debug('About to store uploaded temp file with filename: %s' 
+                  % (upload_filename))
 
         # We now need to create the temporary upload object and store the
         # file and metadata.
