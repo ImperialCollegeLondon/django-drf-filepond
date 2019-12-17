@@ -10,9 +10,9 @@ http://blog.muhuk.com/2010/01/26/developing-reusable-django-apps-app-settings.ht
 ******** DJANGO_DRF_FILEPOND_UPLOAD_TMP in your top level app settings.
 ******** THIS IS CURRENTLY USED ONLY FOR INTEGRATION TESTS
 '''
+import django_drf_filepond
 import os
 from django.conf import settings
-import django_drf_filepond
 
 _app_prefix = 'DJANGO_DRF_FILEPOND_'
 
@@ -58,3 +58,5 @@ FILE_STORE_PATH = getattr(settings, _app_prefix+'FILE_STORE_PATH', None)
 ALLOW_EXTERNAL_UPLOAD_DIR = getattr(settings, 
                                     _app_prefix+'ALLOW_EXTERNAL_UPLOAD_DIR',
                                     False)
+# Optional permissions settings for each endpoint.
+PERMISSION_CLASSES = getattr(settings, _app_prefix+'PERMISSION_CLASSES', {})
