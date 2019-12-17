@@ -435,8 +435,7 @@ class FetchView(APIView):
             return result
         else:
             raise ValueError('process_request result is of an unexpected type')
-        response = Response(buf.getvalue(), status=status.HTTP_200_OK,
-                            content_type=content_type)
+        response = HttpResponse(buf.getvalue(), content_type=content_type)
         response['Content-Disposition'] = ('inline; filename=%s' %
                                            upload_file_name)
         return response
