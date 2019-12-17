@@ -56,3 +56,4 @@ target/
 # Sphinx documentation files
 docs/_build/
 
+/.idea
