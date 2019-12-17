@@ -21,7 +21,7 @@ from django_drf_filepond.api import get_stored_upload, \
 from django_drf_filepond.exceptions import ConfigurationError
 from django_drf_filepond.models import TemporaryUpload, storage, StoredUpload
 from django_drf_filepond.parsers import PlainTextParser
-from django_drf_filepond.renderers import PlainTextRenderer
+from django_drf_filepond.renderers import PlainTextRenderer, BinaryFileRenderer
 from io import BytesIO
 from requests.exceptions import ConnectionError
 from rest_framework import status
@@ -310,6 +310,7 @@ class RestoreView(APIView):
 
 class FetchView(APIView):
     permission_classes = _import_permission_classes('GET_FETCH')
+    renderer_classes = [BinaryFileRenderer, ]
 
     def _process_request(self, request):
         LOG.debug('Filepond API: Fetch view GET called...')
