@@ -159,7 +159,8 @@ def _store_upload_local(destination_file_path, destination_file_name,
 
     su = StoredUpload(upload_id=temp_upload.upload_id,
                       file_path=destination_file_path,
-                      uploaded=temp_upload.uploaded)
+                      uploaded=temp_upload.uploaded,
+                      uploaded_by=temp_upload.uploaded_by)
 
     try:
         if not os.path.exists(target_dir):
@@ -187,7 +188,8 @@ def _store_upload_remote(destination_file_path, destination_file_name,
         storage_backend.save(destination_file, temp_upload.file)
         su = StoredUpload(upload_id=temp_upload.upload_id,
                           file_path=destination_file,
-                          uploaded=temp_upload.uploaded)
+                          uploaded=temp_upload.uploaded,
+                          uploaded_by=temp_upload.uploaded_by)
         su.save()
         temp_upload.delete()
     except Exception as e:
