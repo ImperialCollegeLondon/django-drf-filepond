@@ -59,4 +59,4 @@ ALLOW_EXTERNAL_UPLOAD_DIR = getattr(settings,
                                     _app_prefix+'ALLOW_EXTERNAL_UPLOAD_DIR',
                                     False)
 # Optional permissions settings for each endpoint.
-PERMISSION_CLASSES = getattr(settings, _app_prefix+'PERMISSION_CLASSES', None)
+PERMISSION_CLASSES = getattr(settings, _app_prefix+'PERMISSION_CLASSES', {})
