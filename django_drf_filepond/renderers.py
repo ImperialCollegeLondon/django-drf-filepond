@@ -41,3 +41,16 @@ class PlainTextRenderer(BaseRenderer):
             else:
                 return data.encode(self.charset)
         return data
+
+
+# This renderer passes through a binary to the client.
+# Ref: https://stackoverflow.com/a/49652011/1617590
+class BinaryFileRenderer(BaseRenderer):
+    media_type = 'application/octet-stream'
+    format = None
+    charset = None
+    render_style = 'binary'
+
+    @staticmethod
+    def render(data, media_type=None, renderer_context=None):
+        return data
