@@ -105,6 +105,11 @@ LOG = logging.getLogger(__name__)
 #    object back. Check that an unexpected response type is handled and
 #    results in a ValueError.
 #
+# test_fetch_binary_jpeg: When fetch receives a GET request for any type of
+#    data, the response should be passed through without any issue. When
+#    requesting binary data such as a JPEG image file, this was causing an
+#    issue as described in #23. This test checks binary data is handled OK.
+#
 class FetchTestCase(TestCase):
 
     def test_fetch_incorrect_param(self):
@@ -454,3 +459,32 @@ class FetchTestCase(TestCase):
                 ValueError,
                 'process_request result is of an unexpected type'):
             self.client.get((reverse('fetch') + ('?target=/test_target')))
+
+    @httpretty.activate
+    def test_fetch_binary_jpeg(self):
+        test_url = 'http://localhost/test_image.jpg'
+        test_image = os.path.join(os.path.dirname(__file__), 'test_image.jpg')
+        with open(test_image, 'rb') as f:
+            test_image_data = f.read()
+
+        def response_callback(request, uri, response_headers):
+            response_headers.update({'Content-Type': 'image/jpeg'})
+            if request.method == 'HEAD':
+                return [200, response_headers, b'']
+            else:
+                return [200, response_headers, test_image_data]
+
+        register_uri(method=httpretty.HEAD,
+                     uri=test_url,
+                     status=200,
+                     body=response_callback)
+
+        register_uri(method=httpretty.GET,
+                     uri=test_url,
+                     status=200,
+                     body=response_callback)
+
+        response = self.client.get((reverse('fetch') +
+                                    ('?target=%s' % test_url)))
+        self.assertEqual(response.status_code, 200,
+                         'Expected a 200 response code.')
