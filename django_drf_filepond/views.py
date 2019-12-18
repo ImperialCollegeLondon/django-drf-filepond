@@ -167,7 +167,8 @@ class ProcessView(APIView):
         # file and metadata.
         tu = TemporaryUpload(upload_id=upload_id, file_id=file_id,
                              file=file_obj, upload_name=upload_filename,
-                             upload_type=TemporaryUpload.FILE_DATA)
+                             upload_type=TemporaryUpload.FILE_DATA,
+                             uploaded_by=getattr(request, 'user', None))
         tu.save()
 
         response = Response(upload_id, status=status.HTTP_200_OK,
@@ -416,7 +417,8 @@ class FetchView(APIView):
                                        file_size, None)
         tu = TemporaryUpload(upload_id=upload_id, file_id=file_id,
                              file=memfile, upload_name=upload_file_name,
-                             upload_type=TemporaryUpload.URL)
+                             upload_type=TemporaryUpload.URL,
+                             uploaded_by=getattr(request, 'user', None))
         tu.save()
 
         response = Response(status=status.HTTP_200_OK)
