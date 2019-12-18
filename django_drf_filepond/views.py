@@ -29,6 +29,7 @@ from rest_framework.exceptions import ParseError, NotFound
 from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django.contrib.auth.models import AnonymousUser
 
 LOG = logging.getLogger(__name__)
 
@@ -45,6 +46,15 @@ except NameError:
 def _get_file_id():
     file_id = shortuuid.uuid()
     return file_id
+
+
+# Get the user associated with the provided request. If we have an anonymous
+# user object then return None
+def _get_user(request):
+    upload_user = getattr(request, 'user', None)
+    if isinstance(upload_user, AnonymousUser):
+        upload_user = None
+    return upload_user
 
 
 # FIXME: This is a very basic approach to working out the MIME type.
@@ -108,20 +118,20 @@ class ProcessView(APIView):
         # parameter that can be disabled to turn off this check if the
         # developer wishes?
         if ((not (storage.location).startswith(local_settings.BASE_DIR)) and
-                (local_settings.BASE_DIR != 
+                (local_settings.BASE_DIR !=
                  os.path.dirname(django_drf_filepond.__file__))):
             if not local_settings.ALLOW_EXTERNAL_UPLOAD_DIR:
                 return Response('The file upload path settings are not '
-                            'configured correctly.',
-                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                                'configured correctly.',
+                                status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         # Check that a relative path is not being used to store the
         # upload outside the specified UPLOAD_TMP directory.
         if not getattr(local_settings, 'UPLOAD_TMP').startswith(
                 os.path.abspath(storage.location)):
             return Response('An invalid storage location has been '
-                    'specified.',
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                            'specified.',
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         # Check that we've received a file and then generate a unique ID
         # for it. Also generate a unique UD for the temp upload dir
@@ -160,7 +170,7 @@ class ProcessView(APIView):
         #             '<%s>...' % storage.location)
         #    os.makedirs(storage.location, mode=0o700)
 
-        LOG.debug('About to store uploaded temp file with filename: %s' 
+        LOG.debug('About to store uploaded temp file with filename: %s'
                   % (upload_filename))
 
         # We now need to create the temporary upload object and store the
@@ -168,7 +178,7 @@ class ProcessView(APIView):
         tu = TemporaryUpload(upload_id=upload_id, file_id=file_id,
                              file=file_obj, upload_name=upload_filename,
                              upload_type=TemporaryUpload.FILE_DATA,
-                             uploaded_by=getattr(request, 'user', None))
+                             uploaded_by=_get_user(request))
         tu.save()
 
         response = Response(upload_id, status=status.HTTP_200_OK,
@@ -418,7 +428,7 @@ class FetchView(APIView):
         tu = TemporaryUpload(upload_id=upload_id, file_id=file_id,
                              file=memfile, upload_name=upload_file_name,
                              upload_type=TemporaryUpload.URL,
-                             uploaded_by=getattr(request, 'user', None))
+                             uploaded_by=_get_user(request))
         tu.save()
 
         response = Response(status=status.HTTP_200_OK)
