@@ -16,16 +16,20 @@ from tests.utils import remove_file_upload_dir_if_required
 
 LOG = logging.getLogger(__name__)
 #
-# New tests for checking file storage outside of BASE_DIR (see #18) 
+# New tests for checking file storage outside of BASE_DIR (see #18)
 #
-# test_store_upload_with_storage_outside_BASE_DIR_without_enable: Set a 
-#    FileSystemStorage store location that is outside of BASE_DIR and check 
+# test_store_upload_with_storage_outside_BASE_DIR_without_enable: Set a
+#    FileSystemStorage store location that is outside of BASE_DIR and check
 #    that the upload fails.
-# 
+#
 # test_store_upload_with_storage_outside_BASE_DIR_with_enable: Set a
 #    FileSystemStorage store location outside of BASE_DIR and also set the
 #    ALLOW_EXTERNAL_UPLOAD_DIR setting to True and check the upload succeeds
 #
+# test_relative_UPLOAD_TMP_outside_base_dir_not_allowed: Check that when a
+#    a relative path is provided that gets around the requirement for
+#    UPLOAD_TMP to be under BASE_DIR, that this is detected and a 500 thrown
+
 
 class ProcessTestCase(TestCase):
 
@@ -37,6 +41,24 @@ class ProcessTestCase(TestCase):
 
     def test_process_data(self):
         self._process_data()
+
+    def test_UPLOAD_TMP_not_set(self):
+        upload_tmp = drf_filepond_settings.UPLOAD_TMP
+        delattr(drf_filepond_settings, 'UPLOAD_TMP')
+
+        # Set up and run request
+        (encoded_form, content_type) = self._get_encoded_form('testfile.dat')
+
+        rf = RequestFactory()
+        req = rf.post(reverse('process'),
+                      data=encoded_form, content_type=content_type)
+        pv = views.ProcessView.as_view()
+        response = pv(req)
+
+        self.assertContains(response, 'The file upload path settings are '
+                            'not configured correctly.', status_code=500)
+
+        setattr(drf_filepond_settings, 'UPLOAD_TMP', upload_tmp)
 
     def test_process_invalid_storage_location(self):
         old_storage = views.storage
@@ -139,12 +161,12 @@ class ProcessTestCase(TestCase):
     def test_store_upload_with_storage_outside_BASE_DIR_with_enable(self):
         old_storage = views.storage
         old_UPLOAD_TMP = drf_filepond_settings.UPLOAD_TMP
-        
+
         drf_filepond_settings.ALLOW_EXTERNAL_UPLOAD_DIR = True
-        
+
         views.storage = FileSystemStorage(location='/tmp/uploads')
         drf_filepond_settings.UPLOAD_TMP = '/tmp/uploads'
-        
+
         (encoded_form, content_type) = self._get_encoded_form('testfile.dat')
 
         rf = RequestFactory()
@@ -157,6 +179,25 @@ class ProcessTestCase(TestCase):
         drf_filepond_settings.ALLOW_EXTERNAL_UPLOAD_DIR = False
         self.assertEqual(response.status_code, 200, 'Expecting upload to be '
                          'successful.')
+
+    def test_relative_UPLOAD_TMP_outside_base_dir_not_allowed(self):
+        upload_tmp = drf_filepond_settings.UPLOAD_TMP
+        drf_filepond_settings.UPLOAD_TMP = os.path.join(
+            drf_filepond_settings.BASE_DIR, '..', '..', 'some_dir')
+
+        # Set up and run request
+        (encoded_form, content_type) = self._get_encoded_form('testfile.dat')
+
+        rf = RequestFactory()
+        req = rf.post(reverse('process'),
+                      data=encoded_form, content_type=content_type)
+        pv = views.ProcessView.as_view()
+        response = pv(req)
+
+        self.assertContains(response, 'An invalid storage location has been '
+                            'specified.', status_code=500)
+
+        drf_filepond_settings.UPLOAD_TMP = upload_tmp
 
     def _process_data(self, upload_field_name=None):
         tmp_upload_dir = drf_filepond_settings.UPLOAD_TMP
