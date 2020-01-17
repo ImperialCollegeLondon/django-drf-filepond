@@ -131,7 +131,7 @@ class ApiDeleteTestCase(TestCase):
         self.fn = 'my_test_file.txt'
         self.test_target_filepath = os.path.join('test_storage', self.fn)
         self.su = StoredUpload(upload_id=self.upload_id,
-                               file_path=self.test_target_filepath,
+                               file=self.test_target_filepath,
                                uploaded=timezone.now(),
                                stored=timezone.now())
         self.su.save()

@@ -165,9 +165,9 @@ class ApiTestCase(TestCase):
         upload_id = su.upload_id
         su = StoredUpload.objects.get(upload_id=upload_id)
         LOG.debug('About to check that file path <%s> and stored path <%s> '
-                  'are equal' % (test_target_filename, su.file_path))
+                  'are equal' % (test_target_filename, su.file.name))
         self.assertEqual(
-            test_target_filename, su.file_path,
+            test_target_filename, su.file.name,
             'File has been stored with wrong filename in the database.')
         # Check that the file has actually been stored in the correct
         # location and that the temporary file has been deleted
@@ -176,7 +176,7 @@ class ApiTestCase(TestCase):
         if not file_store_path:
             raise ValueError('Couldn\'t access file store path')
 
-        file_full_path = os.path.join(file_store_path, su.file_path)
+        file_full_path = os.path.join(file_store_path, su.file.name)
         self.assertTrue(os.path.exists(file_full_path) and
                         os.path.isfile(file_full_path))
         self.assertFalse(os.path.exists(
@@ -189,9 +189,9 @@ class ApiTestCase(TestCase):
         su = StoredUpload.objects.get(upload_id=upload_id)
         target_file_path = os.path.join(test_target_dirname, self.fn)
         LOG.debug('About to check that file path <%s> and stored path <%s> '
-                  'are equal' % (target_file_path, su.file_path))
+                  'are equal' % (target_file_path, su.file.name))
         self.assertEqual(
-            target_file_path[1:], su.file_path,
+            target_file_path[1:], su.file.name,
             'File has been stored with wrong filename in the database.')
         # Check that the file has actually been stored in the correct
         # location and that the temporary file has been deleted
@@ -200,7 +200,7 @@ class ApiTestCase(TestCase):
         if not file_store_path:
             raise ValueError('Couldn\'t access file store path')
 
-        file_full_path = os.path.join(file_store_path, su.file_path)
+        file_full_path = os.path.join(file_store_path, su.file.name)
         self.assertTrue(os.path.exists(file_full_path) and
                         os.path.isfile(file_full_path))
         self.assertFalse(os.path.exists(
@@ -215,9 +215,9 @@ class ApiTestCase(TestCase):
         su = StoredUpload.objects.get(upload_id=upload_id)
         target_file_path = os.path.join(test_target_dirname, self.fn)
         LOG.debug('About to check that file path <%s> and stored path <%s> '
-                  'are equal' % (target_file_path, su.file_path))
+                  'are equal' % (target_file_path, su.file.name))
         self.assertEqual(
-            target_file_path, su.file_path,
+            target_file_path, su.file.name,
             'File has been stored with wrong filename in the database.')
         # Check that the file has actually been stored in the correct
         # location and that the temporary file has been deleted
@@ -226,7 +226,7 @@ class ApiTestCase(TestCase):
         if not file_store_path:
             raise ValueError('Couldn\'t access file store path')
 
-        file_full_path = os.path.join(file_store_path, su.file_path)
+        file_full_path = os.path.join(file_store_path, su.file.name)
         self.assertTrue(os.path.exists(file_full_path) and
                         os.path.isfile(file_full_path))
         self.assertFalse(os.path.exists(
@@ -245,9 +245,9 @@ class ApiTestCase(TestCase):
         if target_file_path.startswith(os.sep):
             target_file_path = target_file_path[1:]
         LOG.debug('About to check that file path <%s> and stored path <%s> '
-                  'are equal' % (target_file_path, su.file_path))
+                  'are equal' % (target_file_path, su.file.name))
         self.assertEqual(
-            target_file_path, su.file_path,
+            target_file_path, su.file.name,
             'File has been stored with wrong filename in the database.')
         # Check that the file has actually been stored in the correct
         # location and that the temporary file has been deleted
@@ -256,7 +256,7 @@ class ApiTestCase(TestCase):
         if not file_store_path:
             raise ValueError('Couldn\'t access file store path')
 
-        file_full_path = os.path.join(file_store_path, su.file_path)
+        file_full_path = os.path.join(file_store_path, su.file.name)
         self.assertTrue(os.path.exists(file_full_path) and
                         os.path.isfile(file_full_path))
         self.assertFalse(os.path.exists(
@@ -273,10 +273,10 @@ class ApiTestCase(TestCase):
         su = store_upload(self.upload_id, test_target_filename)
         su2 = store_upload(self.upload_id2, test_target_filename2)
         self.assertEqual(
-            test_target_filename, su.file_path,
+            test_target_filename, su.file.name,
             'File has been stored with wrong filename in the database.')
         self.assertEqual(
-            test_target_filename2, su2.file_path,
+            test_target_filename2, su2.file.name,
             'File 2 has been stored with wrong filename in the database.')
 
         # Check that the files have actually been stored in the correct
@@ -286,8 +286,8 @@ class ApiTestCase(TestCase):
         if not file_store_path:
             raise ValueError('Couldn\'t access file store path')
 
-        file_full_path = os.path.join(file_store_path, su.file_path)
-        file_full_path2 = os.path.join(file_store_path, su2.file_path)
+        file_full_path = os.path.join(file_store_path, su.file.name)
+        file_full_path2 = os.path.join(file_store_path, su2.file.name)
         # Check first file
         self.assertTrue(os.path.exists(file_full_path) and
                         os.path.isfile(file_full_path))

@@ -64,7 +64,7 @@ class ApiGetUploadTestCase(TestCase):
         self.fn = 'my_test_file.txt'
         self.test_target_filename = '/test_storage/testfile.txt'
         self.su = StoredUpload(upload_id=self.upload_id,
-                               file_path=self.test_target_filename[1:],
+                               file=self.test_target_filename[1:],
                                uploaded=timezone.now())
         self.su.save()
         # Create file
@@ -132,7 +132,7 @@ class ApiGetUploadTestCase(TestCase):
         file_store_path = ''
         mock_storage_backend = self._setup_mock_storage_backend()
         mock_storage_backend.exists.return_value = False
-        file_path = os.path.join(file_store_path, self.su.file_path)
+        file_path = os.path.join(file_store_path, self.su.file.name)
         with self.assertRaisesMessage(
                 FileNotFoundError,
                 ('File [%s] for upload_id [%s] not found on remote '
