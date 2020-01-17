@@ -85,7 +85,7 @@ class StoredUpload(models.Model):
                                  validators=[MinLengthValidator(22)])
     # The file name and path (relative to the base file store directory
     # as set by DJANGO_DRF_FILEPOND_FILE_STORE_PATH).
-    file_path = models.CharField(max_length=2048)
+    file = models.FileField(max_length=2048)
     uploaded = models.DateTimeField()
     stored = models.DateTimeField(auto_now_add=True)
     uploaded_by = models.ForeignKey('auth.User', null=True, blank=True,
@@ -95,7 +95,7 @@ class StoredUpload(models.Model):
         fsp = local_settings.FILE_STORE_PATH
         if not fsp:
             fsp = ''
-        return os.path.join(fsp, self.file_path)
+        return os.path.join(fsp, self.file.name)
 
 
 # When a TemporaryUpload record is deleted, we need to delete the
