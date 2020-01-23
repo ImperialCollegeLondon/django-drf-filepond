@@ -21,8 +21,8 @@ setup(
     ],
     include_package_data=True,
     install_requires=[
-        "Django<2.0.0;python_version=='2.7'",
-        "Django<3.0.0;python_version=='3.5'",
+        "Django>=1.11.27,<2.0.0;python_version=='2.7'",
+        "Django>=2.2.9,<3.0.0;python_version=='3.5'",
         "Django>=3.0.2;python_version>='3.6'",
         "djangorestframework==3.9.3;python_version=='2.7'",
         "djangorestframework>=3.9.3;python_version>='3.5'",
