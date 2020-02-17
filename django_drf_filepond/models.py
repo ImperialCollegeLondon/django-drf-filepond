@@ -18,6 +18,8 @@ FILEPOND_UPLOAD_TMP = getattr(
     local_settings, 'UPLOAD_TMP',
     os.path.join(local_settings.BASE_DIR, 'filepond_uploads'))
 
+FILEPOND_FILE_STORE_PATH = getattr(local_settings, 'FILE_STORE_PATH', None)
+
 
 @deconstructible
 class FilePondUploadSystemStorage(FileSystemStorage):
@@ -39,7 +41,28 @@ class FilePondUploadSystemStorage(FileSystemStorage):
         super(FilePondUploadSystemStorage, self).__init__(**kwargs)
 
 
+@deconstructible
+class FilePondStoredSystemStorage(FileSystemStorage):
+    """
+    Subclass FileSystemStorage to prevent creation of new migrations when
+    using a file store location passed to FileSystemStorage using the
+    location attribute. Instead the location is applied dynamically on
+    creation of the subclass avoiding detection of changes by the migration
+    system.
+
+    Addresses #13. Fix is based on fix for similar issue in
+    https://github.com/julen/pootle/commit/fd7800050172549e9f31544843b986691290ddc2
+    """
+
+    def __init__(self, **kwargs):
+        kwargs.update({
+            'location': FILEPOND_UPLOAD_TMP,
+        })
+        super(FilePondStoredSystemStorage, self).__init__(**kwargs)
+
+
 storage = FilePondUploadSystemStorage()
+stored_storage = FilePondStoredSystemStorage()
 
 
 LOG = logging.getLogger(__name__)
@@ -85,7 +108,7 @@ class StoredUpload(models.Model):
                                  validators=[MinLengthValidator(22)])
     # The file name and path (relative to the base file store directory
     # as set by DJANGO_DRF_FILEPOND_FILE_STORE_PATH).
-    file = models.FileField(max_length=2048)
+    file = models.FileField(storage=stored_storage, max_length=2048)
     uploaded = models.DateTimeField()
     stored = models.DateTimeField(auto_now_add=True)
     uploaded_by = models.ForeignKey('auth.User', null=True, blank=True,

@@ -123,7 +123,7 @@ class LoadStoragesTestCase(TestCase):
 
         # Now set up a stored version of this upload
         su = StoredUpload(upload_id=self.upload_id,
-                          file_path=('%s' % (self.fn)),
+                          file=('%s' % (self.fn)),
                           uploaded=timezone.now())
         su.save()
 
@@ -172,7 +172,7 @@ class LoadStoragesTestCase(TestCase):
 
     def test_load_remote_ambiguous_id_file(self):
         su = StoredUpload.objects.get(upload_id=self.upload_id)
-        su.file_path = os.path.join(os.path.dirname(su.file_path),
+        su.file.name = os.path.join(os.path.dirname(su.file.name),
                                     self.test_filename)
         su.save()
         response = self.client.get((reverse('load') +

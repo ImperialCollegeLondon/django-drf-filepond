@@ -1,8 +1,9 @@
 Django>=1.11
 djangorestframework>=3.9.1
-django-storages>=1.7.1
+django-storages>=1.8
 httpretty==0.9.6
 shortuuid==0.5.0
+six==1.14.0
 sphinx==1.8.2
 sphinx_rtd_theme==0.4.2
 sphinx-prompt==1.0.0

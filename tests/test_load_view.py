@@ -96,7 +96,7 @@ class LoadTestCase(TestCase):
 
         # Now set up a stored version of this upload
         su = StoredUpload(upload_id=self.upload_id,
-                          file_path=('%s'
+                          file=('%s'
                                      % (self.fn)),
                           uploaded=tu.uploaded)
         su.save()
@@ -137,11 +137,11 @@ class LoadTestCase(TestCase):
         su = StoredUpload.objects.get(upload_id=self.upload_id)
         tu = TemporaryUpload.objects.get(upload_id=self.upload_id)
         su_target_dir = os.path.join(LoadTestCase.FILE_STORE_PATH,
-                                     os.path.dirname(su.file_path))
+                                     os.path.dirname(su.file.name))
         if not os.path.exists(su_target_dir):
             os.mkdir(su_target_dir)
         shutil.copy2(tu.get_file_path(), os.path.join(
-            LoadTestCase.FILE_STORE_PATH, su.file_path))
+            LoadTestCase.FILE_STORE_PATH, su.file.name))
 
         response = self.client.get((reverse('load') +
                                     ('?id=%s' % self.upload_id)))
@@ -151,11 +151,11 @@ class LoadTestCase(TestCase):
         su = StoredUpload.objects.get(upload_id=self.upload_id)
         tu = TemporaryUpload.objects.get(upload_id=self.upload_id)
         su_target_dir = os.path.join(LoadTestCase.FILE_STORE_PATH,
-                                     os.path.dirname(su.file_path))
+                                     os.path.dirname(su.file.name))
         if not os.path.exists(su_target_dir):
             os.mkdir(su_target_dir)
         shutil.copy2(tu.get_file_path(), os.path.join(
-            LoadTestCase.FILE_STORE_PATH, su.file_path))
+            LoadTestCase.FILE_STORE_PATH, su.file.name))
 
         response = self.client.get((reverse('load') + '?id=%s' % self.fn))
         self._check_file_response(response, self.fn, self.file_content)
@@ -164,18 +164,18 @@ class LoadTestCase(TestCase):
         su = StoredUpload.objects.get(upload_id=self.upload_id)
         tu = TemporaryUpload.objects.get(upload_id=self.upload_id)
         su_target_dir = os.path.join(LoadTestCase.FILE_STORE_PATH,
-                                     os.path.dirname(su.file_path))
+                                     os.path.dirname(su.file.name))
         if not os.path.exists(su_target_dir):
             os.mkdir(su_target_dir)
         shutil.copy2(tu.get_file_path(), os.path.join(
-            LoadTestCase.FILE_STORE_PATH, su.file_path))
+            LoadTestCase.FILE_STORE_PATH, su.file.name))
 
         existing_path = os.path.join(LoadTestCase.FILE_STORE_PATH,
-                                     su.file_path)
+                                     su.file.name)
         existing_path_dir = os.path.dirname(existing_path)
         os.rename(existing_path,
                   os.path.join(existing_path_dir, self.test_filename))
-        su.file_path = os.path.join(os.path.dirname(su.file_path),
+        su.file.name = os.path.join(os.path.dirname(su.file.name),
                                     self.test_filename)
         su.save()
         response = self.client.get((reverse('load') +

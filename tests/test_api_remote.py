@@ -174,9 +174,9 @@ class ApiRemoteTestCase(TestCase):
         upload_id = su.upload_id
         su = StoredUpload.objects.get(upload_id=upload_id)
         LOG.debug('About to check that file path <%s> and stored path <%s> '
-                  'are equal' % (test_target_filename, su.file_path))
+                  'are equal' % (test_target_filename, su.file.name))
         self.assertEqual(
-            test_target_filename, su.file_path,
+            test_target_filename, su.file.name,
             'File has been stored with wrong filename in the database.')
 
         # In the local check, we can check here that the file has actually
