@@ -295,7 +295,7 @@ def get_stored_upload_file_data(stored_upload):
             raise FileNotFoundError(
                 'File [%s] for upload_id [%s] not found on remote file '
                 'store.' % (file_path, stored_upload.upload_id))
-        with storage_backend.open(file_path, 'r') as remote_file:
+        with storage_backend.open(file_path, 'rb') as remote_file:
             bytes_io = BytesIO(remote_file.read())
     else:
         if ((not os.path.exists(file_path)) or
