@@ -12,8 +12,11 @@ import os
 
 from django.test import TestCase
 from django.utils import timezone
+from django.core.files.base import File as DjangoFile
 
-from django_drf_filepond.api import get_stored_upload_file_data
+from django_drf_filepond.api import get_stored_upload, \
+    get_stored_upload_file_data
+
 import django_drf_filepond.api
 import django_drf_filepond.drf_filepond_settings as local_settings
 from django_drf_filepond.exceptions import ConfigurationError
@@ -75,6 +78,13 @@ class ApiGetUploadTestCase(TestCase):
             os.mkdir(os.path.dirname(file_full_path))
         with open(file_full_path, 'w') as f:
             f.write(self.file_content)
+
+    def test_get_local_stored_upload_data(self):
+        su = get_stored_upload(self.su.upload_id)
+        f = su.file.file
+        file_data = f.read().decode()
+        self.assertEqual(file_data, self.file_content,
+                         'File content for the stored upload is not correct.')
 
     def test_store_upload_unset_file_store_path(self):
         (filename, bytes_io) = get_stored_upload_file_data(self.su)
