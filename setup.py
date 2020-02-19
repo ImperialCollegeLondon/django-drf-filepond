@@ -35,7 +35,8 @@ setup(
         "nose",
         "coverage",
         "httpretty",
-        "mock>=3.0.0;python_version<'3.3'",
+        "mock>=3.0.0,<=3.0.5;python_version<='3.5'",
+        "mock>=3.0.5;python_version>'3.5'",
         "paramiko"
     ],
     zip_safe=False,
