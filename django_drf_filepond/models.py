@@ -56,7 +56,7 @@ class FilePondStoredSystemStorage(FileSystemStorage):
 
     def __init__(self, **kwargs):
         kwargs.update({
-            'location': FILEPOND_UPLOAD_TMP,
+            'location': FILEPOND_FILE_STORE_PATH,
         })
         super(FilePondStoredSystemStorage, self).__init__(**kwargs)
 
