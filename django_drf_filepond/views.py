@@ -255,7 +255,7 @@ class LoadView(APIView):
 
         # su is now the StoredUpload record for the requested file
         try:
-            (filename, data_bytes_io) = get_stored_upload_file_data(su)
+            (filename, data_bytes) = get_stored_upload_file_data(su)
         except ConfigurationError as e:
             LOG.error('Error getting file upload: [%s]' % str(e))
             return HttpResponseServerError('The file upload settings are '
@@ -267,7 +267,7 @@ class LoadView(APIView):
 
         ct = _get_content_type(filename)
 
-        response = HttpResponse(data_bytes_io.read(), content_type=ct)
+        response = HttpResponse(data_bytes, content_type=ct)
         response['Content-Disposition'] = ('inline; filename=%s' %
                                            filename)
 
