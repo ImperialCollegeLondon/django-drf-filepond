@@ -14,6 +14,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='storedupload',
             name='file',
-            field=models.FileField(max_length=2048, storage=django_drf_filepond.models.FilePondLocalStoredStorage(), upload_to=''),
+            field=models.FileField(max_length=2048, storage=django_drf_filepond.models.DrfFilePondStoredStorage(), upload_to=''),
         ),
     ]
