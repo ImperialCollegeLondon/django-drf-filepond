@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 import logging
 import os
 
+from django.conf import settings
 from django.core.files.storage import FileSystemStorage
 from django.core.validators import MinLengthValidator
 from django.db import models
@@ -113,6 +114,27 @@ class TemporaryUpload(models.Model):
 
     def get_file_path(self):
         return self.file.path
+
+
+class TemporaryUploadChunked(models.Model):
+    # The unique ID returned to the client and the name of the temporary
+    # directory created to hold file data - this will be re-used in the
+    # main TemporaryUpload record for this upload if/when all the chunks have
+    # been successfully received and the upload is finalised.
+    upload_id = models.CharField(primary_key=True, max_length=22,
+                                 validators=[MinLengthValidator(22)])
+    # The unique ID used to store the file chunks which are appended with
+    # _<chunk_num>
+    file_id = models.CharField(max_length=22,
+                               validators=[MinLengthValidator(22)])
+    upload_dir = models.CharField(max_length=512, default=upload_id)
+    last_chunk = models.IntegerField(default=0)
+    total_size = models.IntegerField(default=0)
+    upload_name = models.CharField(max_length=512, default='')
+    upload_complete = models.BooleanField(default=False)
+    last_upload_time = models.DateTimeField(auto_now_add=True)
+    uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True,
+                                    blank=True, on_delete=models.CASCADE)
 
 
 class StoredUpload(models.Model):
