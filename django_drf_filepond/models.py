@@ -12,7 +12,11 @@ from django.dispatch import receiver
 from django.utils.deconstruct import deconstructible
 
 import django_drf_filepond.drf_filepond_settings as local_settings
+from django.utils.functional import LazyObject
+from django_drf_filepond.storage_utils import _get_storage_backend
 
+
+LOG = logging.getLogger(__name__)
 
 FILEPOND_UPLOAD_TMP = getattr(
     local_settings, 'UPLOAD_TMP',
@@ -41,8 +45,11 @@ class FilePondUploadSystemStorage(FileSystemStorage):
         super(FilePondUploadSystemStorage, self).__init__(**kwargs)
 
 
+storage = FilePondUploadSystemStorage()
+
+
 @deconstructible
-class FilePondStoredSystemStorage(FileSystemStorage):
+class FilePondLocalStoredStorage(FileSystemStorage):
     """
     Subclass FileSystemStorage to prevent creation of new migrations when
     using a file store location passed to FileSystemStorage using the
@@ -58,14 +65,22 @@ class FilePondStoredSystemStorage(FileSystemStorage):
         kwargs.update({
             'location': FILEPOND_FILE_STORE_PATH,
         })
-        super(FilePondStoredSystemStorage, self).__init__(**kwargs)
+        super(FilePondLocalStoredStorage, self).__init__(**kwargs)
 
 
-storage = FilePondUploadSystemStorage()
-stored_storage = FilePondStoredSystemStorage()
+class DrfFilePondStoredStorage(LazyObject):
 
-
-LOG = logging.getLogger(__name__)
+    def _setup(self):
+        # Work out which storage backend we need to use and then
+        # instantiate it and assign it to self._wrapped
+        storage_module_name = getattr(local_settings, 'STORAGES_BACKEND', None)
+        LOG.debug('Initialising storage backend with storage module name [%s]'
+                  % storage_module_name)
+        storage_backend = _get_storage_backend(storage_module_name)
+        if not storage_backend:
+            self._wrapped = FilePondLocalStoredStorage()
+        else:
+            self._wrapped = storage_backend
 
 
 def get_upload_path(instance, filename):
@@ -108,7 +123,8 @@ class StoredUpload(models.Model):
                                  validators=[MinLengthValidator(22)])
     # The file name and path (relative to the base file store directory
     # as set by DJANGO_DRF_FILEPOND_FILE_STORE_PATH).
-    file = models.FileField(storage=stored_storage, max_length=2048)
+    file = models.FileField(storage=DrfFilePondStoredStorage(),
+                            max_length=2048)
     uploaded = models.DateTimeField()
     stored = models.DateTimeField(auto_now_add=True)
     uploaded_by = models.ForeignKey('auth.User', null=True, blank=True,
