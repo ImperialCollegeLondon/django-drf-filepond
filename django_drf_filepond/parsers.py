@@ -26,3 +26,24 @@ class PlainTextParser(BaseParser):
         Simply return a string representing the body of the request.
         """
         return stream.read()
+
+
+# The chunk parser is used to parse uploaded file chunks for the chunked
+# upload support. A chunk upload request has a content type of
+# application/offset+octet-stream. For now we simply get the raw request data
+# and return it.
+# TODO: This could alse extract metadata from the request, such as chunk
+#       length, name and offset and return an object containing the data and
+#       the metadata. For now the metadata is extracted and checked prior to
+#       accessing the uploaded data.
+class UploadChunkParser(BaseParser):
+    """
+    Upload chunk parser for handling uploaded partial file chunks
+    """
+    media_type = 'application/offset+octet-stream'
+
+    def parse(self, stream, media_type=None, parser_context=None):
+        """
+        For now just return the body which contains the uploaded file data
+        """
+        return stream.read()
