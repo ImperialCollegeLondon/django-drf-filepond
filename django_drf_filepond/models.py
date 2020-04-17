@@ -129,10 +129,11 @@ class TemporaryUploadChunked(models.Model):
                                validators=[MinLengthValidator(22)])
     upload_dir = models.CharField(max_length=512, default=upload_id)
     last_chunk = models.IntegerField(default=0)
+    offset = models.IntegerField(default=0)
     total_size = models.IntegerField(default=0)
     upload_name = models.CharField(max_length=512, default='')
     upload_complete = models.BooleanField(default=False)
-    last_upload_time = models.DateTimeField(auto_now_add=True)
+    last_upload_time = models.DateTimeField(auto_now=True)
     uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True,
                                     blank=True, on_delete=models.CASCADE)
 

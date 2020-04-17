@@ -19,8 +19,9 @@ from django.http.response import HttpResponse, HttpResponseNotFound, \
 from django_drf_filepond.api import get_stored_upload, \
     get_stored_upload_file_data
 from django_drf_filepond.exceptions import ConfigurationError
-from django_drf_filepond.models import TemporaryUpload, storage, StoredUpload
-from django_drf_filepond.parsers import PlainTextParser
+from django_drf_filepond.models import TemporaryUpload, storage, StoredUpload,\
+    TemporaryUploadChunked
+from django_drf_filepond.parsers import PlainTextParser, UploadChunkParser
 from django_drf_filepond.renderers import PlainTextRenderer
 from io import BytesIO
 from requests.exceptions import ConnectionError
@@ -147,6 +148,44 @@ class ProcessView(APIView):
             raise e
 
         return response
+
+
+class PatchView(APIView):
+    '''
+    This view handles a PATCH request containing a file chunk as part of the
+    filepond chunked upload support. The chunk will relate to an existing
+    chunked upload configuration created when a new chunked upload request
+    was made to the ProcessView.
+    See: https://pqina.nl/filepond/docs/patterns/api/server/#process-chunks
+    for details of how chunked uploads are handled in filepond.
+    Assuming everything in the request is valid, this view will store the
+    chunk.
+    '''
+    # Chunk upload PATCH requests use the application/offset+octet-stream
+    # Content-Type. Since this is different to the multipart upload used for
+    # process requests, this is being handled in a separate view.
+    # from FilePond.
+    parser_classes = (UploadChunkParser,)
+    renderer_classes = (PlainTextRenderer,)
+    permission_classes = _import_permission_classes('PATCH_PATCH')
+
+    def patch(self, request, chunk_id):
+        LOG.debug('Filepond API: Patch view PATCH called...')
+        try:
+            uploader = FilepondFileUploader.get_uploader(request)
+            response = uploader.handle_upload(request, chunk_id)
+        except ParseError as e:
+            # Re-raise the ParseError to trigger a 400 response via DRF.
+            raise e
+        return response
+
+    # The HEAD method is used to request information about a partially
+    # completed chunked upload. Assuming the details are found and returned
+    # correctly, the client will use this to restart a failed chunked upload.
+    def head(self, request, chunk_id):
+        LOG.debug('Filepond API: Patch view HEAD called...')
+        uploader = FilepondFileUploader.get_uploader(request)
+        return uploader.handle_upload(request, chunk_id)
 
 
 class RevertView(APIView):
