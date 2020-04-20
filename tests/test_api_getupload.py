@@ -87,8 +87,11 @@ class ApiGetUploadTestCase(TestCase):
                          'File content for the stored upload is not correct.')
 
     def test_store_upload_unset_file_store_path(self):
-        (filename, bytes_io) = get_stored_upload_file_data(self.su)
-        file_data = bytes_io.read().decode()
+        # Updated to reflect changes to StoredUpload to use a FileField (#31)
+        # As a result, get_stored_upload_file_data now returns the raw bytes
+        # rather than a BytesIO object.
+        (filename, byte_data) = get_stored_upload_file_data(self.su)
+        file_data = byte_data.decode()
         self.assertEqual(file_data, self.file_content,
                          'Returned file content not correct.')
         self.assertEqual(filename, os.path.basename(self.test_target_filename),
@@ -109,8 +112,9 @@ class ApiGetUploadTestCase(TestCase):
         mock_storage_backend.open.return_value = BytesIO(
             self.file_content.encode())
         mock_storage_backend.exists.return_value = True
-        (filename, bytes_io) = get_stored_upload_file_data(self.su)
-        file_data = bytes_io.read().decode()
+        # Updated as per comment in "test_store_upload_unset_file_store_path"
+        (filename, byte_data) = get_stored_upload_file_data(self.su)
+        file_data = byte_data.decode()
         local_settings.STORAGES_BACKEND = None
         django_drf_filepond.api.storage_backend = None
         self.assertEqual(file_data, self.file_content,
