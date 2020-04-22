@@ -118,13 +118,22 @@ class LoadStoragesTestCase(TestCase):
         self.test_filename = 'sdf5dua32defh754dhsrr2'
 
         # Set up the mock_storage_backend.open to return the file content
+        # In relation to the changes for #31, file is now a FileField
+        # Since only a string is stored to the DB, the creation of the
+        # StoredUpload object below is fine but we need to mock the FileField
+        # object returned.
         self.mock_storage_backend.open.return_value = BytesIO(
             self.file_content)
+
+        # Override storage object configured for the FileField in StoredUpload
+        # at original init time since this happens before setUp is run.
+        StoredUpload.file.field.storage = self.mock_storage_backend
 
         # Now set up a stored version of this upload
         su = StoredUpload(upload_id=self.upload_id,
                           file=('%s' % (self.fn)),
                           uploaded=timezone.now())
+        su.file.storage = self.mock_storage_backend
         su.save()
 
     def test_load_remote_incorrect_method(self):
