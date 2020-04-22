@@ -3,7 +3,7 @@ import os
 
 from django.core.files.uploadedfile import UploadedFile, InMemoryUploadedFile
 from rest_framework import status
-from rest_framework.exceptions import ParseError
+from rest_framework.exceptions import ParseError, MethodNotAllowed
 from rest_framework.response import Response
 
 from django_drf_filepond.models import TemporaryUpload, storage,\
@@ -42,6 +42,9 @@ class FilepondFileUploader(object):
                     LOG.debug('Returning CHUNKED uploader to handle '
                               'upload request... ')
                     return FilepondChunkedFileUploader()
+        else:
+            raise MethodNotAllowed('%s is an invalid method type'
+                                   % (request.method))
 
         # If we didn't identify the need for a chunked uploader in any of the
         # above tests, treat this as a standard upload
