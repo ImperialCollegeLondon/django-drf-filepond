@@ -229,7 +229,7 @@ class FilepondChunkedFileUploader(FilepondFileUploader):
         ulength = request.META.get('HTTP_UPLOAD_LENGTH', None)
         uname = request.META.get('HTTP_UPLOAD_NAME', None)
 
-        if (not uoffset) or (not ulength) or (not uname):
+        if (not uoffset) or (not ulength) or (uname is None):
             return Response('Chunk upload is missing required metadata',
                             status=status.HTTP_400_BAD_REQUEST)
         if int(ulength) != tuc.total_size:
@@ -262,9 +262,6 @@ class FilepondChunkedFileUploader(FilepondFileUploader):
 
         # Get the data and check it fits with the metadata and then save
         file_data = request.data
-        file_data_len = len(file_data)
-        LOG.debug('Got data from request with length %s bytes'
-                  % (file_data_len))
 
         if type(file_data) == bytes:
             fd = BytesIO(file_data)
@@ -273,6 +270,10 @@ class FilepondChunkedFileUploader(FilepondFileUploader):
         else:
             return Response('Upload data type not recognised.',
                             status=status.HTTP_400_BAD_REQUEST)
+
+        file_data_len = len(file_data)
+        LOG.debug('Got data from request with length %s bytes'
+                  % (file_data_len))
 
         # Store the chunk and check if we've now completed the upload
         upload_dir = os.path.join(storage.base_location, tuc.upload_dir)
@@ -354,6 +355,11 @@ class FilepondChunkedFileUploader(FilepondFileUploader):
         except TemporaryUploadChunked.DoesNotExist:
             return Response('Invalid upload ID specified.',
                             status=status.HTTP_404_NOT_FOUND)
+
+        if tuc.upload_complete is True:
+            return Response('Invalid upload ID specified.',
+                            status=status.HTTP_400_BAD_REQUEST)
+
         # Check that the directory for the chunks exists
         if not os.path.exists(os.path.join(storage.base_location,
                                            tuc.upload_dir)):

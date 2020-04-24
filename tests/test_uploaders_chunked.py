@@ -1,12 +1,17 @@
+from io import BytesIO
 import logging
+import os
 
-from django.test import TestCase
-
-from rest_framework.request import Request
-from django_drf_filepond.uploaders import FilepondChunkedFileUploader
-from django_drf_filepond.views import _get_file_id
 from django.contrib.auth.models import AnonymousUser
+from django.test import TestCase
+from django_drf_filepond.models import TemporaryUploadChunked
 from django_drf_filepond.renderers import PlainTextRenderer
+from django_drf_filepond.views import _get_file_id
+from rest_framework.request import Request
+
+from django_drf_filepond.uploaders import FilepondChunkedFileUploader, storage
+import django_drf_filepond
+
 
 # Python 2/3 support
 try:
@@ -99,12 +104,21 @@ LOG = logging.getLogger(__name__)
 # test_upload_chunk_invalid_data_type: Test that a 400 error is raised if the
 #    uploaded data is not provided as a string or bytes.
 #
+# test_upload_chunk_dir_missing(self): Test that a 500 error is raised if the
+#    upload directory for chunk storage is missing.
+#
 # test_upload_chunk_byte_data: Test that a 400 error is raised if the
 #    uploaded data is not provided as a string or bytes.
 #
 # test_upload_chunk_string_data: Test that a 400 error is raised if the
 #    uploaded data is not provided as a string or bytes.
-
+#
+# test_upload_chunk_name_set_chunk0: Test that when the first chunk is
+#    uploaded, the file name is set on the TemporaryUploadChunked object.
+#
+# test_upload_chunk_upload_complete: Test that when the chunk being uploaded
+#    is the final chunk, that there is an attempt to store the final data file.
+#
 # TESTS FOR _store_upload FUNCTION
 # --------------------------------
 #
@@ -118,6 +132,10 @@ LOG = logging.getLogger(__name__)
 #    resulting from a chunked upload is of the wrong size, this is detected
 #    and a ValueError is raised.
 #
+# test_store_upload_stored_file_missing: Test that if the final stored file is
+#    not present after the final TemporaryUpload record has been saved that
+#    a ValueError is raised.
+#
 # test_store_upload_successful: Test that _store_upload correctly handles a
 #    valid set of chunks and creates a TemporaryUpload object.
 #
@@ -126,6 +144,10 @@ LOG = logging.getLogger(__name__)
 #
 # test_chunk_restart_invalid_id: Test that attempt to restart a chunked upload
 #    with an invalid upload_id results in a 404 since the upload isn't found.
+#
+# test_chunk_restart_completed_upload: Test that an attempt to restart a
+#    completed chunked upload fails. The record should already have been
+#    deleted but this case is checked for nonetheless.
 #
 # test_chunk_restart_data_dir_missing: Test that an attempt to restart a valid
 #    upload generates a 500 error if the chunk file directory is not found.
@@ -140,26 +162,42 @@ class UploadersFileChunkedTestCase(TestCase):
     def setUp(self):
         self.upload_id = _get_file_id()
         self.file_id = _get_file_id()
+        self.upload_name = 'my_test_file.png'
         self.uploader = FilepondChunkedFileUploader()
         self.request = MagicMock(spec=Request)
         self.request.user = AnonymousUser()
 
-    # Since we're working with mocked requests that haven't been processed via
-    # a DRF/Django view, the request won't reneder correctly without having
-    # some parameters set. Using assertContains requires that the request has
-    # these parameters set so this helper function is used to avoid repetition.
-    def _prep_request(self, request):
-        request.accepted_renderer = PlainTextRenderer()
-        request.accepted_media_type = 'text/plain'
-        request.renderer_context = {}
-        return request
+    # Since we're working with mocked requests and getting responses that
+    # haven't been processed via a DRF/Django view, the response won't render
+    # correctly without having some additional parameters set. Using
+    # assertContains requires that the request has these parameters set so
+    # this helper function is used to avoid repetition.
+    def _prep_response(self, response):
+        response.accepted_renderer = PlainTextRenderer()
+        response.accepted_media_type = 'text/plain'
+        response.renderer_context = {}
+        return response
+
+    # Set up a TemporaryUploadChunked database object for use in the
+    # _store_upload functions.
+    def _setup_tuc(self, complete=False, last_chunk=3, offset=150000,
+                   upload_name=None):
+        if upload_name is None:
+            upload_name = self.upload_name
+        tuc = TemporaryUploadChunked(
+            upload_id=self.upload_id, file_id=self.file_id,
+            upload_name=upload_name, upload_dir=self.upload_id,
+            offset=offset, last_chunk=last_chunk,
+            total_size=1048576, upload_complete=complete)
+        tuc.save()
+        return tuc
 
     # TESTS FOR TOP-LEVEL handle_upload FUNCTION
     # ------------------------------------------
     def test_handle_chunked_upload_invalid_upload_id_format(self):
         r = self.uploader.handle_upload(self.request, 'fdsfdsfds')
         # Add parameters to the response so that it can be rendered
-        r = self._prep_request(r)
+        r = self._prep_response(r)
         self.assertContains(r, 'Invalid ID for handling upload.',
                             status_code=500)
 
@@ -180,7 +218,7 @@ class UploadersFileChunkedTestCase(TestCase):
     def test_post_req_err_without_file_id(self):
         self.request.method = 'POST'
         r = self.uploader.handle_upload(self.request, self.upload_id)
-        r = self._prep_request(r)
+        r = self._prep_response(r)
         self.assertContains(r, 'Invalid ID for handling upload.',
                             status_code=500)
 
@@ -197,7 +235,7 @@ class UploadersFileChunkedTestCase(TestCase):
         self.request.data = {'filepond': 'Some data.'}
         r = self.uploader._handle_new_chunk_upload(
             self.request, self.upload_id, self.file_id)
-        r = self._prep_request(r)
+        r = self._prep_response(r)
         self.assertContains(r,
                             ('An invalid file object has been received for a '
                              'new chunked upload request.'), status_code=400)
@@ -207,7 +245,7 @@ class UploadersFileChunkedTestCase(TestCase):
         self.request.META = {}
         r = self.uploader._handle_new_chunk_upload(
             self.request, self.upload_id, self.file_id)
-        r = self._prep_request(r)
+        r = self._prep_response(r)
         self.assertContains(r, 'No length for new chunked upload request.',
                             status_code=400)
 
@@ -216,82 +254,390 @@ class UploadersFileChunkedTestCase(TestCase):
         self.request.META = {'HTTP_UPLOAD_LENGTH': 1048576}
         r = self.uploader._handle_new_chunk_upload(
             self.request, '../../%s' % self.upload_id, self.file_id)
-        r = self._prep_request(r)
+        r = self._prep_response(r)
         self.assertContains(r, 'Unable to create storage for upload data.',
                             status_code=500)
 
     @patch('os.path.exists')
-    def test_new_chunk_upload_storage_dir_not_exists(self, mock_ope):
+    def test_new_chunk_upload_base_storage_dir_not_exists(self, mock_ope):
         mock_ope.return_value = False
+
         self.request.data = {'filepond': '{}'}
         self.request.META = {'HTTP_UPLOAD_LENGTH': 1048576}
         r = self.uploader._handle_new_chunk_upload(
             self.request, self.upload_id, self.file_id)
-        r = self._prep_request(r)
+        r = self._prep_response(r)
         self.assertContains(r, 'Data storage error occurred.', status_code=500)
 
-    def test_new_chunk_upload_dir_exists(self):
-        raise NotImplementedError()
+    @patch('os.path.exists')
+    def test_new_chunk_upload_storage_dir_exists(self, mock_ope):
+        mock_ope.return_value = True
 
-    def test_new_chunk_upload_successful(self):
-        raise NotImplementedError()
+        self.request.data = {'filepond': '{}'}
+        self.request.META = {'HTTP_UPLOAD_LENGTH': 1048576}
+
+        with patch('os.makedirs') as mock_osmd:
+            mock_osmd.side_effect = OSError('[Mock] Unable to create dir!')
+            r = self.uploader._handle_new_chunk_upload(
+                self.request, self.upload_id, self.file_id)
+
+        r = self._prep_response(r)
+        self.assertContains(r, 'Unable to prepare storage for upload data.',
+                            status_code=500)
+
+    @patch('os.path.exists')
+    def test_new_chunk_upload_successful(self, mock_ope):
+        mock_ope.return_value = True
+
+        self.request.data = {'filepond': '{}'}
+        self.request.META = {'HTTP_UPLOAD_LENGTH': 1048576}
+
+        with patch('os.makedirs'):
+            r = self.uploader._handle_new_chunk_upload(
+                self.request, self.upload_id, self.file_id)
+
+        r = self._prep_response(r)
+        self.assertContains(r, self.upload_id, status_code=200)
 
     # TESTS FOR _handle_chunk_upload FUNCTION
     # -------------------------------------------
     def test_upload_chunk_missing_id(self):
-        raise NotImplementedError()
+        res = self.uploader._handle_chunk_upload(self.request, '')
+        res = self._prep_response(res)
+        self.assertContains(res, 'A required chunk parameter is missing.',
+                            status_code=400)
 
     def test_upload_chunk_invalid_id(self):
-        raise NotImplementedError()
+        res = self.uploader._handle_chunk_upload(self.request, 'asddad')
+        res = self._prep_response(res)
+        self.assertContains(res, 'Invalid chunk upload request data',
+                            status_code=400)
 
     def test_upload_chunk_offset_missing(self):
-        raise NotImplementedError()
+        tuc = self._setup_tuc()
+        self.request.META = {'HTTP_UPLOAD_LENGTH': tuc.total_size,
+                             'HTTP_UPLOAD_NAME': tuc.upload_name}
+        res = self.uploader._handle_chunk_upload(self.request, self.upload_id)
+        res = self._prep_response(res)
+        self.assertContains(res, 'Chunk upload is missing required metadata',
+                            status_code=400)
 
     def test_upload_chunk_length_missing(self):
-        raise NotImplementedError()
+        tuc = self._setup_tuc()
+        self.request.META = {'HTTP_UPLOAD_OFFSET': 150000,
+                             'HTTP_UPLOAD_NAME': tuc.upload_name}
+        res = self.uploader._handle_chunk_upload(self.request, self.upload_id)
+        res = self._prep_response(res)
+        self.assertContains(res, 'Chunk upload is missing required metadata',
+                            status_code=400)
 
     def test_upload_chunk_name_missing(self):
-        raise NotImplementedError()
+        tuc = self._setup_tuc()
+        self.request.META = {'HTTP_UPLOAD_OFFSET': 150000,
+                             'HTTP_UPLOAD_LENGTH': tuc.total_size}
+        res = self.uploader._handle_chunk_upload(self.request, self.upload_id)
+        res = self._prep_response(res)
+        self.assertContains(res, 'Chunk upload is missing required metadata',
+                            status_code=400)
 
     def test_upload_chunk_length_changed(self):
-        raise NotImplementedError()
+        tuc = self._setup_tuc()
+        self.request.META = {'HTTP_UPLOAD_OFFSET': 150000,
+                             'HTTP_UPLOAD_LENGTH': 250000,
+                             'HTTP_UPLOAD_NAME': tuc.upload_name}
+        res = self.uploader._handle_chunk_upload(self.request, self.upload_id)
+        res = self._prep_response(res)
+        self.assertContains(res, ('ERROR: Upload metadata is invalid - size '
+                                  'changed'), status_code=400)
 
     def test_upload_chunk_name_changed(self):
-        raise NotImplementedError()
+        tuc = self._setup_tuc()
+        self.request.META = {'HTTP_UPLOAD_OFFSET': 150000,
+                             'HTTP_UPLOAD_LENGTH': tuc.total_size,
+                             'HTTP_UPLOAD_NAME': 'different_name.png'}
+        res = self.uploader._handle_chunk_upload(self.request, self.upload_id)
+        res = self._prep_response(res)
+        self.assertContains(res, 'Chunk upload file metadata is invalid',
+                            status_code=400)
 
     def test_upload_chunk_offset_different(self):
-        raise NotImplementedError()
+        tuc = self._setup_tuc(offset=100000)
+        self.request.META = {'HTTP_UPLOAD_OFFSET': 150000,
+                             'HTTP_UPLOAD_LENGTH': tuc.total_size,
+                             'HTTP_UPLOAD_NAME': tuc.upload_name}
+        res = self.uploader._handle_chunk_upload(self.request, self.upload_id)
+        res = self._prep_response(res)
+        self.assertContains(res, 'ERROR: Chunked upload metadata is invalid.',
+                            status_code=400)
 
     def test_upload_chunk_invalid_data_type(self):
-        raise NotImplementedError()
+        tuc = self._setup_tuc()
+        self.request.META = {'HTTP_UPLOAD_OFFSET': 150000,
+                             'HTTP_UPLOAD_LENGTH': tuc.total_size,
+                             'HTTP_UPLOAD_NAME': tuc.upload_name}
+        self.request.data = object()
+        res = self.uploader._handle_chunk_upload(self.request, self.upload_id)
+        res = self._prep_response(res)
+        self.assertContains(res, 'Upload data type not recognised.',
+                            status_code=400)
 
-    def test_upload_chunk_byte_data(self):
-        raise NotImplementedError()
+    def test_upload_chunk_dir_missing(self):
+        tuc = self._setup_tuc()
+        self.request.META = {'HTTP_UPLOAD_OFFSET': 150000,
+                             'HTTP_UPLOAD_LENGTH': tuc.total_size,
+                             'HTTP_UPLOAD_NAME': tuc.upload_name}
+        self.request.data = 'This is the test upload chunk data...'
+        with patch('os.path.exists', return_value=False):
+            res = self.uploader._handle_chunk_upload(self.request,
+                                                     self.upload_id)
+        res = self._prep_response(res)
+        self.assertContains(res, 'Chunk storage location error',
+                            status_code=500)
 
-    def test_upload_chunk_string_data(self):
-        raise NotImplementedError()
+    @patch('django_drf_filepond.models.FilePondUploadSystemStorage.save')
+    def test_upload_chunk_byte_data(self, _):
+        tuc = self._setup_tuc()
+        self.request.META = {'HTTP_UPLOAD_OFFSET': 150000,
+                             'HTTP_UPLOAD_LENGTH': tuc.total_size,
+                             'HTTP_UPLOAD_NAME': tuc.upload_name}
+        self.request.data = 'This is the test upload chunk data...'.encode()
+
+        with patch('os.path.exists', return_value=True):
+            res = self.uploader._handle_chunk_upload(self.request,
+                                                     self.upload_id)
+        res = self._prep_response(res)
+        self.assertContains(res, self.upload_id, status_code=200)
+
+    @patch('django_drf_filepond.models.FilePondUploadSystemStorage.save')
+    def test_upload_chunk_string_data(self, _):
+        tuc = self._setup_tuc()
+        self.request.META = {'HTTP_UPLOAD_OFFSET': 150000,
+                             'HTTP_UPLOAD_LENGTH': tuc.total_size,
+                             'HTTP_UPLOAD_NAME': tuc.upload_name}
+        self.request.data = str('This is the test upload chunk data...')
+
+        with patch('os.path.exists', return_value=True):
+            res = self.uploader._handle_chunk_upload(self.request,
+                                                     self.upload_id)
+        res = self._prep_response(res)
+        self.assertContains(res, self.upload_id, status_code=200)
+
+    @patch('django_drf_filepond.models.FilePondUploadSystemStorage.save')
+    def test_upload_chunk_name_set_chunk0(self, _):
+        tuc = self._setup_tuc(last_chunk=0, upload_name='')
+        self.request.META = {'HTTP_UPLOAD_OFFSET': 150000,
+                             'HTTP_UPLOAD_LENGTH': tuc.total_size,
+                             'HTTP_UPLOAD_NAME': self.upload_name}
+        self.request.data = str('This is the test upload chunk data...')
+        with patch('os.path.exists', return_value=True):
+            res = self.uploader._handle_chunk_upload(self.request,
+                                                     self.upload_id)
+        res = self._prep_response(res)
+        self.assertContains(res, self.upload_id, status_code=200)
+        new_tuc = TemporaryUploadChunked.objects.get(upload_id=self.upload_id)
+        self.assertEqual(new_tuc.upload_name, self.upload_name,
+                         'Upload name has not been set on first chunk upload.')
+
+    @patch('django_drf_filepond.models.FilePondUploadSystemStorage.save')
+    @patch('django_drf_filepond.uploaders.FilepondChunkedFileUploader.'
+           '_store_upload')
+    def test_upload_chunk_upload_complete(self, mock_store_upload, _):
+        tuc = self._setup_tuc(complete=True)
+        self.request.META = {'HTTP_UPLOAD_OFFSET': 150000,
+                             'HTTP_UPLOAD_LENGTH': tuc.total_size,
+                             'HTTP_UPLOAD_NAME': tuc.upload_name}
+        self.request.data = str('This is the test upload chunk data...')
+
+        with patch('os.path.exists', return_value=True):
+            res = self.uploader._handle_chunk_upload(self.request,
+                                                     self.upload_id)
+        res = self._prep_response(res)
+        mock_store_upload.assert_called_once_with(tuc)
+        self.assertContains(res, self.upload_id, status_code=200)
 
     # TESTS FOR _store_upload FUNCTION
     # --------------------------------
     def test_store_upload_chunks_not_complete(self):
-        raise NotImplementedError()
+        tuc = self._setup_tuc()
+        with self.assertRaisesMessage(
+                ValueError, ('Attempt to store an incomplete upload with ID '
+                             '<%s>' % self.upload_id)):
+            self.uploader._store_upload(tuc)
 
     def test_store_upload_chunk_missing(self):
-        raise NotImplementedError()
+        # Test a case where the second upload chunk is missing.
+        tuc = self._setup_tuc(True)
+        tuc.last_chunk = 3
+        tuc.save()
+        chunk_base = os.path.join(storage.base_location, tuc.upload_dir,
+                                  '%s_' % (tuc.file_id))
 
-    def test_store_upload_stored_file_wrong_size(self):
-        raise NotImplementedError()
+        def mock_path_exists_se(chunk_file):
+            if chunk_file == chunk_base + '2':
+                return False
+            return True
 
-    def test_store_upload_successful(self):
-        raise NotImplementedError()
+        def mock_open_se(chunk_file, _):
+            return BytesIO((os.path.basename(chunk_file) + '_*...*_').encode())
+
+        with patch('os.path.exists', side_effect=mock_path_exists_se):
+            open_name = '%s.open' % django_drf_filepond.uploaders.__name__
+            with patch(open_name, side_effect=mock_open_se):
+                with self.assertRaisesMessage(
+                        FileNotFoundError,
+                        'Chunk file not found for chunk <2>'):
+                    self.uploader._store_upload(tuc)
+
+    # We patch TemporaryUpload.save so that it doesn't try to save a file to
+    # disk but also so that it doesn't call os.path.exists as part of the save
+    # process since we patch os.path.exists later and this causes problems
+    # with attempting to save the file anyway.
+    @patch('django_drf_filepond.models.TemporaryUpload.save')
+    def test_store_upload_stored_file_wrong_size(self, _):
+        # Test a case where the second upload chunk is missing.
+        tuc = self._setup_tuc(True)
+        tuc.last_chunk = 3
+        tuc.save()
+
+        tuc.save = MagicMock()
+
+        chunk_base = os.path.join(storage.base_location, tuc.upload_dir,
+                                  tuc.file_id)
+
+        def mock_path_exists_se(chunk_file):
+            # Need to have something that checks for the structure of the file
+            # name since os.path.exists is used when trying to save the
+            # TemporaryUpload record and it goes into an infinite loop checking
+            # possible file names if we simply force this to return true always
+            if chunk_file.startswith(chunk_base):
+                return True
+            return False
+
+        def mock_open_se(chunk_file, _):
+            return BytesIO((os.path.basename(chunk_file) + '_*...*_').encode())
+
+        with patch('os.path.exists', side_effect=mock_path_exists_se):
+            open_name = '%s.open' % django_drf_filepond.uploaders.__name__
+            with patch(open_name, side_effect=mock_open_se):
+                with patch('django_drf_filepond.models.TemporaryUpload'):
+                    with patch('os.path.getsize', return_value=128000):
+                        with self.assertRaisesMessage(
+                                ValueError,
+                                'Stored file size wrong or file not found.'):
+                            self.uploader._store_upload(tuc)
+
+    # See comment on test_store_upload_stored_file_wrong_size re this patch
+    @patch('django_drf_filepond.models.TemporaryUpload.save')
+    def test_store_upload_stored_file_missing(self, _):
+        tuc = self._setup_tuc(True)
+        tuc.last_chunk = 3
+        tuc.save()
+
+        tuc.save = MagicMock()
+        tuc.delete = MagicMock()
+
+        chunk_base = os.path.join(storage.base_location, tuc.upload_dir,
+                                  tuc.file_id)
+
+        def mock_path_exists_se(chunk_file):
+            # Need to have something that checks for the structure of the file
+            # name since os.path.exists is used when trying to save the
+            # TemporaryUpload record and it goes into an infinite loop checking
+            # possible file names if we simply force this to return true always
+            if chunk_file.startswith(chunk_base + '_'):
+                return True
+            return False
+
+        def mock_open_se(chunk_file, _):
+            return BytesIO((os.path.basename(chunk_file) + '_*...*_').encode())
+
+        with patch('os.path.exists', side_effect=mock_path_exists_se):
+            open_name = '%s.open' % django_drf_filepond.uploaders.__name__
+            with patch(open_name, side_effect=mock_open_se):
+                    with patch('os.path.getsize', return_value=tuc.total_size):
+                        # This shouldn't be required if the error is raised
+                        # but in case it isn't, this handles os.remove calls
+                        # after the point where the error should occur
+                        with patch('os.remove'):
+                            with self.assertRaisesMessage(
+                                    ValueError, ('Stored file size wrong or '
+                                                 'file not found.')):
+                                self.uploader._store_upload(tuc)
+
+    # See comment for test_store_upload_stored_file_wrong_size re this patch
+    @patch('django_drf_filepond.models.TemporaryUpload.save')
+    def test_store_upload_successful(self, _):
+        tuc = self._setup_tuc(True)
+        tuc.last_chunk = 3
+        tuc.save()
+
+        tuc.save = MagicMock()
+        tuc.delete = MagicMock()
+
+        chunk_base = os.path.join(storage.base_location, tuc.upload_dir,
+                                  tuc.file_id)
+
+        def mock_path_exists_se(chunk_file):
+            LOG.debug('Mock os.path.exists call for: <%s>' % chunk_file)
+            # Need to have something that checks for the structure of the file
+            # name since os.path.exists is used when trying to save the
+            # TemporaryUpload record and it goes into an infinite loop checking
+            # possible file names if we simply force this to return true always
+            if chunk_file.startswith(chunk_base):
+                return True
+            return False
+
+        def mock_open_se(chunk_file, _):
+            return BytesIO((os.path.basename(chunk_file) + '_*...*_').encode())
+
+        with patch('os.path.exists', side_effect=mock_path_exists_se):
+            open_name = '%s.open' % django_drf_filepond.uploaders.__name__
+            with patch(open_name, side_effect=mock_open_se):
+                    with patch('os.path.getsize', return_value=tuc.total_size):
+                        with patch('os.remove') as mock_rm:
+                            self.uploader._store_upload(tuc)
+                            mock_rm.test_assert_has_calls([chunk_base + '_1',
+                                                           chunk_base + '_2',
+                                                           chunk_base + '_3'])
+                            tuc.delete.assert_called_once()
 
     # TESTS FOR _handle_chunk_restart FUNCTION
     # ----------------------------------------
     def test_chunk_restart_invalid_id(self):
-        raise NotImplementedError()
+        self._setup_tuc()
+        new_upload_id = _get_file_id()
+        res = self.uploader._handle_chunk_restart(self.request, new_upload_id)
+        res = self._prep_response(res)
+        self.assertContains(res, 'Invalid upload ID specified.',
+                            status_code=404)
+
+    def test_chunk_restart_completed_upload(self):
+        self._setup_tuc(complete=True)
+        res = self.uploader._handle_chunk_restart(self.request, self.upload_id)
+        res = self._prep_response(res)
+        self.assertContains(res, 'Invalid upload ID specified.',
+                            status_code=400)
 
     def test_chunk_restart_data_dir_missing(self):
-        raise NotImplementedError()
+        tuc = self._setup_tuc()
+        with patch('os.path.exists', return_value=False):
+            res = self.uploader._handle_chunk_restart(self.request,
+                                                      tuc.upload_id)
+        res = self._prep_response(res)
+        self.assertContains(res, ('Invalid upload location, can\'t continue '
+                                  'upload.'), status_code=500)
 
     def test_chunk_restart_successful(self):
-        raise NotImplementedError()
+        tuc = self._setup_tuc()
+        tuc.last_chunk = 2
+        tuc.offset = 100000
+        tuc.save()
+        with patch('os.path.exists', return_value=True):
+            res = self.uploader._handle_chunk_restart(self.request,
+                                                      tuc.upload_id)
+        res = self._prep_response(res)
+        self.assertContains(res, self.upload_id, status_code=200)
+        self.assertIn('Upload-Offset', res,
+                      'Upload-Offset header is missing from response')
+        self.assertEqual(int(res['Upload-Offset']), tuc.offset,
+                         'Upload-Offset in response doesn\'t match tuc obj.')
