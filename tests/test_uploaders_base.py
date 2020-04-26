@@ -4,9 +4,10 @@ from django.test import TestCase
 
 from rest_framework.request import Request
 from django_drf_filepond.uploaders import FilepondFileUploader,\
-    FilepondChunkedFileUploader, FilepondStandardFileUploader
+    FilepondChunkedFileUploader, FilepondStandardFileUploader, _get_user
 from rest_framework.exceptions import MethodNotAllowed, ParseError
 from django.core.files.uploadedfile import InMemoryUploadedFile
+from django.contrib.auth.models import User, AnonymousUser
 from django_drf_filepond.views import _get_file_id
 
 # Python 2/3 support
@@ -66,6 +67,10 @@ LOG = logging.getLogger(__name__)
 # test_file_id_wrong_data_type: Test the file ID validator with an ID of the
 #    wrong data type (i.e. not a string)
 #
+# test_get_user_regular: Test that _get_user correctly extracts a request user
+#
+# test_get_user_anonymous: Test that _get_user correctly handles an anonymous
+#    request user.
 
 
 class UploadersBaseTestCase(TestCase):
@@ -182,3 +187,15 @@ class UploadersBaseTestCase(TestCase):
             FilepondFileUploader._file_id_valid(file_id),
             ('The provided file ID is of the wrong data type, this test '
              'should fail.'))
+
+    def test_get_user_regular(self):
+        req = MagicMock(spec=Request)
+        req.user = User(username='test_user')
+        u = _get_user(req)
+        self.assertEqual(u.username, 'test_user', 'Incorrect user returned.')
+
+    def test_get_user_anonymous(self):
+        req = MagicMock(spec=Request)
+        req.user = AnonymousUser()
+        u = _get_user(req)
+        self.assertEqual(u, None, 'Anonymous user not handled correctly.')

@@ -119,6 +119,9 @@ LOG = logging.getLogger(__name__)
 # test_upload_chunk_upload_complete: Test that when the chunk being uploaded
 #    is the final chunk, that there is an attempt to store the final data file.
 #
+# test_upload_chunk_upload_complete_set: Test that when the chunk being
+#    uploaded has the final block of data, upload_complete is set.
+#
 # TESTS FOR _store_upload FUNCTION
 # --------------------------------
 #
@@ -181,14 +184,14 @@ class UploadersFileChunkedTestCase(TestCase):
     # Set up a TemporaryUploadChunked database object for use in the
     # _store_upload functions.
     def _setup_tuc(self, complete=False, last_chunk=3, offset=150000,
-                   upload_name=None):
+                   upload_name=None, total_size=1048576):
         if upload_name is None:
             upload_name = self.upload_name
         tuc = TemporaryUploadChunked(
             upload_id=self.upload_id, file_id=self.file_id,
             upload_name=upload_name, upload_dir=self.upload_id,
             offset=offset, last_chunk=last_chunk,
-            total_size=1048576, upload_complete=complete)
+            total_size=total_size, upload_complete=complete)
         tuc.save()
         return tuc
 
@@ -222,12 +225,13 @@ class UploadersFileChunkedTestCase(TestCase):
         self.assertContains(r, 'Invalid ID for handling upload.',
                             status_code=500)
 
-    def test_valid_post_req_handled(self):
+    @patch('django_drf_filepond.uploaders.FilepondChunkedFileUploader.'
+           '_handle_new_chunk_upload')
+    def test_valid_post_req_handled(self, mock_hncu):
         self.request.method = 'POST'
-        self.uploader._handle_new_chunk_upload = MagicMock()
         self.uploader.handle_upload(self.request, self.upload_id, self.file_id)
-        self.uploader._handle_new_chunk_upload.assert_called_with(
-            self.request, self.upload_id, self.file_id)
+        mock_hncu.assert_called_with(self.request, self.upload_id,
+                                     self.file_id)
 
     # TESTS FOR _handle_new_chunk_upload FUNCTION
     # -------------------------------------------
@@ -447,6 +451,23 @@ class UploadersFileChunkedTestCase(TestCase):
                              'HTTP_UPLOAD_LENGTH': tuc.total_size,
                              'HTTP_UPLOAD_NAME': tuc.upload_name}
         self.request.data = str('This is the test upload chunk data...')
+
+        with patch('os.path.exists', return_value=True):
+            res = self.uploader._handle_chunk_upload(self.request,
+                                                     self.upload_id)
+        res = self._prep_response(res)
+        mock_store_upload.assert_called_once_with(tuc)
+        self.assertContains(res, self.upload_id, status_code=200)
+
+    @patch('django_drf_filepond.models.FilePondUploadSystemStorage.save')
+    @patch('django_drf_filepond.uploaders.FilepondChunkedFileUploader.'
+           '_store_upload')
+    def test_upload_chunk_upload_complete_set(self, mock_store_upload, _):
+        tuc = self._setup_tuc(complete=False, total_size=150041)
+        self.request.META = {'HTTP_UPLOAD_OFFSET': 150000,
+                             'HTTP_UPLOAD_LENGTH': 150041,
+                             'HTTP_UPLOAD_NAME': tuc.upload_name}
+        self.request.data = str('This is the final chunk of upload data...')
 
         with patch('os.path.exists', return_value=True):
             res = self.uploader._handle_chunk_upload(self.request,
