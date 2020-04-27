@@ -19,8 +19,7 @@ from django.http.response import HttpResponse, HttpResponseNotFound, \
 from django_drf_filepond.api import get_stored_upload, \
     get_stored_upload_file_data
 from django_drf_filepond.exceptions import ConfigurationError
-from django_drf_filepond.models import TemporaryUpload, storage, StoredUpload,\
-    TemporaryUploadChunked
+from django_drf_filepond.models import TemporaryUpload, storage, StoredUpload
 from django_drf_filepond.parsers import PlainTextParser, UploadChunkParser
 from django_drf_filepond.renderers import PlainTextRenderer
 from io import BytesIO
@@ -30,8 +29,8 @@ from rest_framework.exceptions import ParseError, NotFound
 from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from django.contrib.auth.models import AnonymousUser
 from django_drf_filepond.uploaders import FilepondFileUploader
+from django_drf_filepond.utils import _get_file_id, _get_user
 
 LOG = logging.getLogger(__name__)
 
@@ -43,20 +42,6 @@ try:
     FileNotFoundError
 except NameError:
     FileNotFoundError = IOError
-
-
-def _get_file_id():
-    file_id = shortuuid.uuid()
-    return file_id
-
-
-# Get the user associated with the provided request. If we have an anonymous
-# user object then return None
-def _get_user(request):
-    upload_user = getattr(request, 'user', None)
-    if isinstance(upload_user, AnonymousUser):
-        upload_user = None
-    return upload_user
 
 
 # FIXME: This is a very basic approach to working out the MIME type.

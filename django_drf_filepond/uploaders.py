@@ -8,19 +8,10 @@ from rest_framework.response import Response
 
 from django_drf_filepond.models import TemporaryUpload, storage,\
     TemporaryUploadChunked
-from django.contrib.auth.models import AnonymousUser
 from io import BytesIO, StringIO
+from django_drf_filepond.utils import _get_user
 
 LOG = logging.getLogger(__name__)
-
-
-# Get the user associated with the provided request. If we have an anonymous
-# user object then return None
-def _get_user(request):
-    upload_user = getattr(request, 'user', None)
-    if isinstance(upload_user, AnonymousUser):
-        upload_user = None
-    return upload_user
 
 
 class FilepondFileUploader(object):

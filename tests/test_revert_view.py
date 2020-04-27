@@ -6,7 +6,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
 
-from django_drf_filepond import views
+from django_drf_filepond.utils import _get_file_id
 from django_drf_filepond.models import TemporaryUpload, storage
 import django_drf_filepond.drf_filepond_settings as local_settings
 from django_drf_filepond.views import RevertView
@@ -27,8 +27,8 @@ class RevertTestCase(TestCase):
         data = BytesIO()
         data.write(os.urandom(16384))
         self.base_upload_dir_at_startup = os.path.exists(storage.location)
-        self.file_id = views._get_file_id()
-        self.upload_id = views._get_file_id()
+        self.file_id = _get_file_id()
+        self.upload_id = _get_file_id()
         test_file = SimpleUploadedFile(self.file_id, data.read())
         self.tu = TemporaryUpload.objects.create(
             upload_id=self.upload_id,

@@ -6,7 +6,7 @@ from django.contrib.auth.models import AnonymousUser
 from django.test import TestCase
 from django_drf_filepond.models import TemporaryUploadChunked
 from django_drf_filepond.renderers import PlainTextRenderer
-from django_drf_filepond.views import _get_file_id
+from django_drf_filepond.utils import _get_file_id
 from rest_framework.request import Request
 
 from django_drf_filepond.uploaders import FilepondChunkedFileUploader, storage
