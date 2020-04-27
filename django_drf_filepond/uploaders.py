@@ -204,8 +204,22 @@ class FilepondChunkedFileUploader(FilepondFileUploader):
                         content_type='text/plain')
 
     def _handle_chunk_upload(self, request, chunk_id):
+        # Check that the incoming data can be accessed. If the request
+        # content type was invalid then we want to raise an error here
+        # Trying to access request data should result in a 415 response if
+        # the data couldn't be handled by the configured parser.
+        file_data = request.data
+
         if (not chunk_id) or (chunk_id == ''):
             return Response('A required chunk parameter is missing.',
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        if type(file_data) == bytes:
+            fd = BytesIO(file_data)
+        elif type(file_data) == str:
+            fd = StringIO(file_data)
+        else:
+            return Response('Upload data type not recognised.',
                             status=status.HTTP_400_BAD_REQUEST)
 
         # Try to load a temporary chunked upload object for the provided id
@@ -249,17 +263,6 @@ class FilepondChunkedFileUploader(FilepondFileUploader):
                       'stored offset <%s> for chunked upload id <%s>'
                       % (uoffset, tuc.offset, chunk_id))
             return Response('ERROR: Chunked upload metadata is invalid.',
-                            status=status.HTTP_400_BAD_REQUEST)
-
-        # Get the data and check it fits with the metadata and then save
-        file_data = request.data
-
-        if type(file_data) == bytes:
-            fd = BytesIO(file_data)
-        elif type(file_data) == str:
-            fd = StringIO(file_data)
-        else:
-            return Response('Upload data type not recognised.',
                             status=status.HTTP_400_BAD_REQUEST)
 
         file_data_len = len(file_data)
@@ -345,17 +348,20 @@ class FilepondChunkedFileUploader(FilepondFileUploader):
             tuc = TemporaryUploadChunked.objects.get(upload_id=upload_id)
         except TemporaryUploadChunked.DoesNotExist:
             return Response('Invalid upload ID specified.',
-                            status=status.HTTP_404_NOT_FOUND)
+                            status=status.HTTP_404_NOT_FOUND,
+                            content_type='text/plain')
 
         if tuc.upload_complete is True:
             return Response('Invalid upload ID specified.',
-                            status=status.HTTP_400_BAD_REQUEST)
+                            status=status.HTTP_400_BAD_REQUEST,
+                            content_type='text/plain')
 
         # Check that the directory for the chunks exists
         if not os.path.exists(os.path.join(storage.base_location,
                                            tuc.upload_dir)):
             return Response('Invalid upload location, can\'t continue upload.',
-                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            content_type='text/plain')
 
         # TODO: Is it necessary to check for the existence of all previous
         #       chunk files here?
