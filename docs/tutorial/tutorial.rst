@@ -242,6 +242,15 @@ in the filepond panel in the webpage and it can be cancelled by clicking the
 cancel button in the UI in the same way as a file uploaded from the local 
 system by browsing or drag and drop.
 
+Chunked file uploads
+--------------------
+
+If you'd like to test the use of chunked file uploads, you can modify the
+`filepond-jquery-example.html <https://github.com/ImperialCollegeLondon/django-drf-filepond/blob/master/docs/tutorial/filepond-jquery-example.html>`_
+file to include the necessary configuration to enable chunked uploads as
+described in the ":ref:`chunked_uploads`" section of the ":ref:`Installation`"
+part of the main django-drf-filepond documentation.
+
 Tutorial Part B: Using remote file storage
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
