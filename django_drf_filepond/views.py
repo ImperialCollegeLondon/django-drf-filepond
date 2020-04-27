@@ -156,13 +156,8 @@ class PatchView(APIView):
 
     def patch(self, request, chunk_id):
         LOG.debug('Filepond API: Patch view PATCH called...')
-        try:
-            uploader = FilepondFileUploader.get_uploader(request)
-            response = uploader.handle_upload(request, chunk_id)
-        except ParseError as e:
-            # Re-raise the ParseError to trigger a 400 response via DRF.
-            raise e
-        return response
+        uploader = FilepondFileUploader.get_uploader(request)
+        return uploader.handle_upload(request, chunk_id)
 
     # The HEAD method is used to request information about a partially
     # completed chunked upload. Assuming the details are found and returned
