@@ -9,7 +9,7 @@ from django.utils import timezone
 
 import django_drf_filepond.drf_filepond_settings as local_settings
 from django_drf_filepond.models import StoredUpload
-from django_drf_filepond.views import _get_file_id
+from django_drf_filepond.utils import _get_file_id
 
 # Python 2/3 support
 try:

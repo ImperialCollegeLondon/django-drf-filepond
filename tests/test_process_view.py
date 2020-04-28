@@ -9,10 +9,21 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.test.client import encode_multipart, RequestFactory
 from django.urls import reverse
+from rest_framework import status
+from rest_framework.response import Response
+from six import ensure_text
 
 from django_drf_filepond import drf_filepond_settings
+import django_drf_filepond
 import django_drf_filepond.views as views
 from tests.utils import remove_file_upload_dir_if_required
+
+
+# Python 2/3 support
+try:
+    from unittest.mock import patch, MagicMock, ANY
+except ImportError:
+    from mock import patch, MagicMock, ANY
 
 LOG = logging.getLogger(__name__)
 #
@@ -29,6 +40,10 @@ LOG = logging.getLogger(__name__)
 # test_relative_UPLOAD_TMP_outside_base_dir_not_allowed: Check that when a
 #    a relative path is provided that gets around the requirement for
 #    UPLOAD_TMP to be under BASE_DIR, that this is detected and a 500 thrown
+#
+# test_new_chunked_upload_request: Check that a new chunked upload request
+#    results in handle_upload being called on the chunked uploader class.
+#
 
 
 class ProcessTestCase(TestCase):
@@ -199,6 +214,36 @@ class ProcessTestCase(TestCase):
 
         drf_filepond_settings.UPLOAD_TMP = upload_tmp
 
+    @patch('django_drf_filepond.uploaders.FilepondChunkedFileUploader.'
+           '_handle_new_chunk_upload')
+    def test_new_chunked_upload_request(self, mock_chunked_ul):
+        # Tried to patch the mocked _get_file_id function but the views
+        # module seems to have been pre-initialised within the Django init
+        # phase and it has already imported the unmocked object.
+        # For testing we manually assign the mocked object here and then
+        # revert to the original after the view call.
+        upload_id = ensure_text('ababababababababababab')
+        file_id = ensure_text('xyxyxyxyxyxyxyxyxyxyxy')
+        mock_gfid = MagicMock(spec='django_drf_filepond.utils._get_file_id')
+        mock_gfid.side_effect = [upload_id, file_id, upload_id, file_id]
+
+        original_gfid = django_drf_filepond.views._get_file_id
+        django_drf_filepond.views._get_file_id = mock_gfid
+
+        mock_chunked_ul.return_value = Response(upload_id,
+                                                status=status.HTTP_200_OK,
+                                                content_type='text/plain')
+        (encoded_form, content_type) = self._get_encoded_form('testfile.dat',
+                                                              file_spec='{}')
+        rf = RequestFactory(HTTP_UPLOAD_LENGTH=1048576)
+        req = rf.post(reverse('process'),
+                      data=encoded_form, content_type=content_type)
+        pv = views.ProcessView.as_view()
+        pv(req)
+        django_drf_filepond.views._get_file_id = original_gfid
+
+        mock_chunked_ul.assert_called_once_with(ANY, upload_id, file_id)
+
     def _process_data(self, upload_field_name=None):
         tmp_upload_dir = drf_filepond_settings.UPLOAD_TMP
         self.uploaddir_exists_pre_test = os.path.exists(tmp_upload_dir)
@@ -243,13 +288,15 @@ class ProcessTestCase(TestCase):
         self.assertEqual(len(response.data), 22,
                          'Response data is not of the correct length.')
 
-    def _get_encoded_form(self, filename, upload_field_name=None):
-        f = SimpleUploadedFile(filename, self.test_data.read())
+    def _get_encoded_form(self, filename, upload_field_name=None,
+                          file_spec=None):
+        if not file_spec:
+            file_spec = SimpleUploadedFile(filename, self.test_data.read())
         if upload_field_name:
-            upload_form = {upload_field_name: f,
+            upload_form = {upload_field_name: file_spec,
                            'fp_upload_field': upload_field_name}
         else:
-            upload_form = {'filepond': f}
+            upload_form = {'filepond': file_spec}
 
         boundary = str(uuid.uuid4()).replace('-', '')
 

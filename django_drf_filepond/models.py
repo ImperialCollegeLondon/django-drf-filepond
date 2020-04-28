@@ -109,11 +109,33 @@ class TemporaryUpload(models.Model):
     uploaded = models.DateTimeField(auto_now_add=True)
     upload_type = models.CharField(max_length=1,
                                    choices=UPLOAD_TYPE_CHOICES)
-    uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True,
-                                    on_delete=models.CASCADE)
+    uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True,
+                                    blank=True, on_delete=models.CASCADE)
 
     def get_file_path(self):
         return self.file.path
+
+
+class TemporaryUploadChunked(models.Model):
+    # The unique ID returned to the client and the name of the temporary
+    # directory created to hold file data - this will be re-used in the
+    # main TemporaryUpload record for this upload if/when all the chunks have
+    # been successfully received and the upload is finalised.
+    upload_id = models.CharField(primary_key=True, max_length=22,
+                                 validators=[MinLengthValidator(22)])
+    # The unique ID used to store the file chunks which are appended with
+    # _<chunk_num>
+    file_id = models.CharField(max_length=22,
+                               validators=[MinLengthValidator(22)])
+    upload_dir = models.CharField(max_length=512, default=upload_id)
+    last_chunk = models.IntegerField(default=0)
+    offset = models.IntegerField(default=0)
+    total_size = models.IntegerField(default=0)
+    upload_name = models.CharField(max_length=512, default='')
+    upload_complete = models.BooleanField(default=False)
+    last_upload_time = models.DateTimeField(auto_now=True)
+    uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True,
+                                    blank=True, on_delete=models.CASCADE)
 
 
 class StoredUpload(models.Model):
@@ -128,8 +150,8 @@ class StoredUpload(models.Model):
                             max_length=2048)
     uploaded = models.DateTimeField()
     stored = models.DateTimeField(auto_now_add=True)
-    uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True,
-                                    on_delete=models.CASCADE)
+    uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True,
+                                    blank=True, on_delete=models.CASCADE)
 
     def get_absolute_file_path(self):
         fsp = local_settings.FILE_STORE_PATH

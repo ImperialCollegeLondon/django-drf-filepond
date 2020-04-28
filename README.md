@@ -4,11 +4,13 @@
 
 **django-drf-filepond** is a Django app that provides a [filepond](https://github.com/pqina/filepond) server-side implementation for Django/Django REST Framework projects. The app can be easily added to your Django projects to provide a server-side API for the filepond file upload library.
 
-:new: Now with support for remote file storage via [*django-storages*](https://django-storages.readthedocs.io/) in v0.2.0.
+django-drf-filepond supports remote storage of uploads via [*django-storages*](https://django-storages.readthedocs.io/)
+
+:new: Support for filepond chunked uploads now available from version 0.3.0.
 
 Further documentation and a tutorial are available at [https://django-drf-filepond.readthedocs.io](https://django-drf-filepond.readthedocs.io).
 
-#### Installation
+### Installation
 
 The app can be installed from PyPi:
 
@@ -18,11 +20,11 @@ pip install django-drf-filepond
 
 or add it to your list of dependencies in a [_requirements.txt_](https://pip.pypa.io/en/stable/user_guide/#requirements-files) file.
 
-#### Configuration
+### Configuration
 
 There are three key configuration updates to make within your Django application to set up django-drf-filepond:
 
-###### 1. Add the app to INSTALLED_APPS:
+##### 1. Add the app to INSTALLED_APPS:
 
 Add 'django-drf-filepond' to `INSTALLED_APPS` in your Django settings file (e.g. `settings.py`):
 
@@ -37,7 +39,7 @@ INSTALLED_APPS = [
 ...
 ```
 
-###### 2. Set the temporary file upload location:
+##### 2. Set the temporary file upload location:
 
 Set the location where you want django-drf-filepond to store temporary file uploads by adding the `DJANGO_DRF_FILEPOND_UPLOAD_TMP` configuration variable to your settings file, e.g.:
 
@@ -48,7 +50,7 @@ DJANGO_DRF_FILEPOND_UPLOAD_TMP = os.path.join(BASE_DIR, 'filepond-temp-uploads')
 ...
 ```
 
-###### 3. Include the app urls into your main url configuration
+##### 3. Include the app urls into your main url configuration
 
 Add the URL mappings for django-drf-filepond to your URL configuration in `urls.py`:
 
@@ -61,9 +63,9 @@ urlpatterns = [
 ]
 ```
 
-On the client side, you need to set the endpoints of the `process`, `revert`, `fetch`, `load` and `restore` functions to match the endpoint used in your path statement above. For example if the first parameter to `url` is `fp/` then the endpoint for the process function will be `/fp/process/`.
+On the client side, you need to set the endpoints of the `process`, `revert`, `fetch`, `load`, `restore` and `patch` functions to match the endpoint used in your path statement above. For example if the first parameter to `url` is `fp/` then the endpoint for the process function will be `/fp/process/`.
 
-###### (Optional) 4. File storage configuration
+##### (Optional) 4. File storage configuration
 
 Initially, uploaded files are stored in a temporary staging area (the location you set in item 2 above, with the `DJANGO_DRF_FILEPOND_UPLOAD_TMP` parameter. At this point, an uploaded file is still shown in the filepond UI on the client and the user can choose to cancel the upload resulting in the file being deleted from temporary storage and the upload being cancelled. When a user confirms a file upload, e.g. by submitting the form in which the filepond component is embedded, any temporary uploads need to be moved to a permanent storage location.
 
@@ -72,7 +74,7 @@ There are three different options for file storage:
 - Use a location on a local filesystem on the host server for file storage 
   (see Section 4.1)
    
-- **\*NEW\*** Use a remote file storage backend via the [*django-storages*](https://django-storages.readthedocs.io/en/latest>) library (see Section 4.2)
+- Use a remote file storage backend via the [*django-storages*](https://django-storages.readthedocs.io/en/latest>) library (see Section 4.2)
 
 - Manage file storage yourself, independently of *django-drf-filepond* (in this case, filepond ``load`` functionality is not supported)
 
@@ -155,13 +157,39 @@ DJANGO_DRF_FILEPOND_FILE_STORE_PATH = os.path.join(BASE_DIR, 'stored_uploads')
 ```
 See _"Working with file uploads"_ below for more information on how to move temporary uploads to _django-drf-filepond_-managed permanent storage.
 
-#### Working with file uploads
+### Working with file uploads
 
 When a file is uploaded from a filepond client, the file is placed into a uniquely named directory within the temporary upload directory specified by the `DJANGO_DRF_FILEPOND_UPLOAD_TMP` parameter. As per the filepond [server spec](https://pqina.nl/filepond/docs/patterns/api/server/), the server returns a unique identifier for the file upload. In this case, the identifier is a 22-character unique ID generated using the [shortuuid](https://github.com/skorokithakis/shortuuid) library. This ID is the name used for the directory created under `DJANGO_DRF_FILEPOND_UPLOAD_TMP` into which the file is placed. At present, the file also has a separate unique identifier which hides the original name of the file on the server filesystem. The original filename is stored within the django-drf-filepond app's database.
 
 When/if the client subsequently submits the form associated with the filepond instance that triggered the upload, the unique directory ID will be passed and this can be used to look up the temporary file.
 
-There are two different approaches for handling files that need to be stored permanently on a server after being uploaded from a filepond client via django-drf-filepond. _These two approaches are not mutually exclusive and you can choose to use one approach for some files and the other approach for other files if you wish._
+#### Chunked uploads
+
+_django-drf-filepond_ now supports filepond [chunked uploads](https://pqina.nl/filepond/docs/patterns/api/server/#chunk-uploads). There is no configuration required for _django-drf-filepond_ on the server side to handle chunked uploads.
+
+On the client side, you need to ensure that your [filepond configuration](https://pqina.nl/filepond/docs/patterns/api/filepond-instance/#server-configuration) specifies server endpoints for both the `process` and `patch` methods and that you have the required configuration options in place to enable chunked uploads. For example, if you want to enable `chunkUploads` and send uploads in 500,000 byte chunks, your filepond configuration should include properties similar to the following:
+
+```python
+FilePond.setOptions({
+    ...
+    chunkUploads: true,
+    chunkSize: 500000,
+    server: {
+        url: 'https://.../fp',
+        process: '/process/',
+        patch: '/patch/',
+        revert: '/revert/',
+        fetch: '/fetch/?target='
+    }
+    ...
+});
+```
+
+#### Storing file uploads
+
+There are two different approaches for handling temporary uploads that need to be stored permanently on a server after being uploaded from a filepond client via django-drf-filepond. _These two approaches are not mutually exclusive and you can choose to use one approach for some files and the other approach for other files if you wish._
+
+
 
 ##### 1. Manual handling of file storage
 
@@ -306,10 +334,13 @@ DJANGO_DRF_FILEPOND_PERMISSION_CLASSES = {
     'POST_PROCESS': ['rest_framework.permissions.IsAuthenticated', ],
     'GET_RESTORE': ['rest_framework.permissions.IsAuthenticated', ],
     'DELETE_REVERT': ['rest_framework.permissions.IsAuthenticated', ],
+    'PATCH_PATCH': ['rest_framework.permissions.IsAuthenticated', ],
 }
 ```
 
-You can add more than one permission for each endpoint.
+You can add more than one permission for each endpoint. 
+
+The above list includes all the permission names currently defined on django-drf-filepond views. The naming convention used is `<METHOD_NAME>_<ENDPOINT_NAME>` where `<METHOD_NAME>` is the method name used for a request and `<ENDPOINT_NAME>` is the URL endpoint called. So, for example, a `POST` request to `/fp/process` would be handled by the permission classes defined for `POST_PROCESS`.
 
 ### License
 
