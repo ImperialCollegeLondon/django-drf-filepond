@@ -11,7 +11,7 @@ from django.test import TestCase
 from django.conf import settings
 from six.moves import reload_module
 
-from django_drf_filepond import views
+from django_drf_filepond.utils import _get_file_id
 import django_drf_filepond
 from django.test.utils import override_settings
 
@@ -50,14 +50,14 @@ class AppSettingsTestCase(TestCase):
                          os.path.join(app_base, 'filepond_uploads'))
 
     def test_file_id(self):
-        file_id = views._get_file_id()
+        file_id = _get_file_id()
         self.assertEqual(len(file_id), 22,
                          'Incorrect length for generated file ID.')
 
     def test_file_id_clashes(self):
         GENERATED_IDS = 5000
         LOG.debug('Generating list of many file ids...')
-        file_ids = [views._get_file_id() for _ in range(GENERATED_IDS)]
+        file_ids = [_get_file_id() for _ in range(GENERATED_IDS)]
         file_id_set = set(file_ids)
         LOG.debug('File id list generated...')
         self.assertEqual(len(file_id_set), GENERATED_IDS, 'There were '

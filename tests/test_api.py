@@ -17,7 +17,7 @@ import os
 
 from django.test import TestCase
 from django_drf_filepond.api import store_upload
-from django_drf_filepond.views import _get_file_id
+from django_drf_filepond.utils import _get_file_id
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django_drf_filepond.models import TemporaryUpload, StoredUpload
 

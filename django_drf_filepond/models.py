@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 import logging
 import os
 
+from django.conf import settings
 from django.core.files.storage import FileSystemStorage
 from django.core.validators import MinLengthValidator
 from django.db import models
@@ -12,7 +13,11 @@ from django.dispatch import receiver
 from django.utils.deconstruct import deconstructible
 
 import django_drf_filepond.drf_filepond_settings as local_settings
+from django.utils.functional import LazyObject
+from django_drf_filepond.storage_utils import _get_storage_backend
 
+
+LOG = logging.getLogger(__name__)
 
 FILEPOND_UPLOAD_TMP = getattr(
     local_settings, 'UPLOAD_TMP',
@@ -41,8 +46,11 @@ class FilePondUploadSystemStorage(FileSystemStorage):
         super(FilePondUploadSystemStorage, self).__init__(**kwargs)
 
 
+storage = FilePondUploadSystemStorage()
+
+
 @deconstructible
-class FilePondStoredSystemStorage(FileSystemStorage):
+class FilePondLocalStoredStorage(FileSystemStorage):
     """
     Subclass FileSystemStorage to prevent creation of new migrations when
     using a file store location passed to FileSystemStorage using the
@@ -56,16 +64,24 @@ class FilePondStoredSystemStorage(FileSystemStorage):
 
     def __init__(self, **kwargs):
         kwargs.update({
-            'location': FILEPOND_UPLOAD_TMP,
+            'location': FILEPOND_FILE_STORE_PATH,
         })
-        super(FilePondStoredSystemStorage, self).__init__(**kwargs)
+        super(FilePondLocalStoredStorage, self).__init__(**kwargs)
 
 
-storage = FilePondUploadSystemStorage()
-stored_storage = FilePondStoredSystemStorage()
+class DrfFilePondStoredStorage(LazyObject):
 
-
-LOG = logging.getLogger(__name__)
+    def _setup(self):
+        # Work out which storage backend we need to use and then
+        # instantiate it and assign it to self._wrapped
+        storage_module_name = getattr(local_settings, 'STORAGES_BACKEND', None)
+        LOG.debug('Initialising storage backend with storage module name [%s]'
+                  % storage_module_name)
+        storage_backend = _get_storage_backend(storage_module_name)
+        if not storage_backend:
+            self._wrapped = FilePondLocalStoredStorage()
+        else:
+            self._wrapped = storage_backend
 
 
 def get_upload_path(instance, filename):
@@ -93,11 +109,33 @@ class TemporaryUpload(models.Model):
     uploaded = models.DateTimeField(auto_now_add=True)
     upload_type = models.CharField(max_length=1,
                                    choices=UPLOAD_TYPE_CHOICES)
-    uploaded_by = models.ForeignKey('auth.User', null=True, blank=True,
-                                    on_delete=models.CASCADE)
+    uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True,
+                                    blank=True, on_delete=models.CASCADE)
 
     def get_file_path(self):
         return self.file.path
+
+
+class TemporaryUploadChunked(models.Model):
+    # The unique ID returned to the client and the name of the temporary
+    # directory created to hold file data - this will be re-used in the
+    # main TemporaryUpload record for this upload if/when all the chunks have
+    # been successfully received and the upload is finalised.
+    upload_id = models.CharField(primary_key=True, max_length=22,
+                                 validators=[MinLengthValidator(22)])
+    # The unique ID used to store the file chunks which are appended with
+    # _<chunk_num>
+    file_id = models.CharField(max_length=22,
+                               validators=[MinLengthValidator(22)])
+    upload_dir = models.CharField(max_length=512, default=upload_id)
+    last_chunk = models.IntegerField(default=0)
+    offset = models.IntegerField(default=0)
+    total_size = models.IntegerField(default=0)
+    upload_name = models.CharField(max_length=512, default='')
+    upload_complete = models.BooleanField(default=False)
+    last_upload_time = models.DateTimeField(auto_now=True)
+    uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True,
+                                    blank=True, on_delete=models.CASCADE)
 
 
 class StoredUpload(models.Model):
@@ -108,11 +146,12 @@ class StoredUpload(models.Model):
                                  validators=[MinLengthValidator(22)])
     # The file name and path (relative to the base file store directory
     # as set by DJANGO_DRF_FILEPOND_FILE_STORE_PATH).
-    file = models.FileField(storage=stored_storage, max_length=2048)
+    file = models.FileField(storage=DrfFilePondStoredStorage(),
+                            max_length=2048)
     uploaded = models.DateTimeField()
     stored = models.DateTimeField(auto_now_add=True)
-    uploaded_by = models.ForeignKey('auth.User', null=True, blank=True,
-                                    on_delete=models.CASCADE)
+    uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True,
+                                    blank=True, on_delete=models.CASCADE)
 
     def get_absolute_file_path(self):
         fsp = local_settings.FILE_STORE_PATH

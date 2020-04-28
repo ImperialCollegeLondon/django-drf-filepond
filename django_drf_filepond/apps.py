@@ -63,6 +63,9 @@ class DjangoDrfFilepondConfig(AppConfig):
                           'exists')
         else:
             if not storage_class:
+                LOG.error('You are using local file storage so you must set '
+                          'the base file storage path using %sFILE_STORE_PATH'
+                          % local_settings._app_prefix)
                 raise ImproperlyConfigured(
                     'You are using local file storage so you must set the '
                     'base file storage path using %sFILE_STORE_PATH'

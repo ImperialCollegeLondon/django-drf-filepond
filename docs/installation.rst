@@ -1,3 +1,5 @@
+.. _Installation:
+
 ############
 Installation
 ############
@@ -83,7 +85,24 @@ On the client side, you need to set the endpoints of the ``process``,
 ``revert``, ``fetch``, ``load`` and ``restore`` functions to match the 
 endpoint used in your path statement above. For example if the first 
 parameter to ``url`` is ``^fp/`` then the endpoint for the ``process`` 
-function will be ``/fp/process/``.
+function will be ``/fp/process/``. For example, your client-side configuration
+may include configuration similar to the following::
+
+    FilePond.setOptions({
+        ...
+        server: {
+            url: 'https://<your app domain>/fp',
+            process: '/process/',
+            patch: '/patch/',
+            revert: '/revert/',
+            fetch: '/fetch/?target=',
+            load: '/load/'
+        }
+        ...
+    });
+
+See the `filepond server configuration <https://pqina.nl/filepond/docs/patterns/api/server/>`_
+documentation for further examples.
 
 (Optional) 4. File storage configuration
 ========================================
@@ -237,6 +256,48 @@ django-drf-filepond API to store files to a local or remote file store.
 	django-storages is set using a setting specific to the backend that you
 	are using - see the django-storages documentation for your chosen
 	backend for further information.
+
+.. _chunked_uploads:
+
+Chunked uploads
+===============
+
+``django-drf-filepond`` now supports filepond
+`chunked uploads <https://pqina.nl/filepond/docs/patterns/api/server/#chunk-uploads>`_.
+To use chunked uploads, you enable the functionality in your configuration
+of the filepond client and set the file chunk size you'd like to use. When
+filepond attempts to upload a file larger than the chunk size, it breaks the
+file up into chunks which are each uploaded in order. If the connection should
+fail and a chunk doesn't upload correctly, the client will retry the chunk.
+If the set number of retries is exceeded, the client stops attempting to
+retry the upload but provides the user with a retry button to manually retry
+the upload. ``django-drf-filepond`` includes all the necessary server-side
+functionality to support this.
+
+There is no configuration required for ``django-drf-filepond`` on the server
+side to handle chunked uploads.
+
+On the client side, you need to ensure that your 
+`filepond configuration <https://pqina.nl/filepond/docs/patterns/api/filepond-instance/#server-configuration>`_
+specifies server endpoints for both the ``process`` and ``patch`` methods
+and that you have the required configuration options in place to enable
+chunked uploads. For example, if you want to enable ``chunkUploads`` and
+send uploads in 500,000 byte chunks, your filepond configuration should
+include properties similar to the following::
+
+    FilePond.setOptions({
+        ...
+        chunkUploads: true,
+        chunkSize: 500000,
+        server: {
+            url: 'https://.../fp',
+            process: '/process/',
+            patch: '/patch/',
+            ...
+        }
+        ...
+    });
+
 
 Advanced Configuration Options
 ==============================

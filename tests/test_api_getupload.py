@@ -12,13 +12,16 @@ import os
 
 from django.test import TestCase
 from django.utils import timezone
+from django.core.files.base import File as DjangoFile
 
-from django_drf_filepond.api import get_stored_upload_file_data
+from django_drf_filepond.api import get_stored_upload, \
+    get_stored_upload_file_data
+
 import django_drf_filepond.api
 import django_drf_filepond.drf_filepond_settings as local_settings
 from django_drf_filepond.exceptions import ConfigurationError
 from django_drf_filepond.models import StoredUpload
-from django_drf_filepond.views import _get_file_id
+from django_drf_filepond.utils import _get_file_id
 
 # Python 2/3 support
 try:
@@ -76,9 +79,19 @@ class ApiGetUploadTestCase(TestCase):
         with open(file_full_path, 'w') as f:
             f.write(self.file_content)
 
+    def test_get_local_stored_upload_data(self):
+        su = get_stored_upload(self.su.upload_id)
+        f = su.file.file
+        file_data = f.read().decode()
+        self.assertEqual(file_data, self.file_content,
+                         'File content for the stored upload is not correct.')
+
     def test_store_upload_unset_file_store_path(self):
-        (filename, bytes_io) = get_stored_upload_file_data(self.su)
-        file_data = bytes_io.read().decode()
+        # Updated to reflect changes to StoredUpload to use a FileField (#31)
+        # As a result, get_stored_upload_file_data now returns the raw bytes
+        # rather than a BytesIO object.
+        (filename, byte_data) = get_stored_upload_file_data(self.su)
+        file_data = byte_data.decode()
         self.assertEqual(file_data, self.file_content,
                          'Returned file content not correct.')
         self.assertEqual(filename, os.path.basename(self.test_target_filename),
@@ -99,8 +112,9 @@ class ApiGetUploadTestCase(TestCase):
         mock_storage_backend.open.return_value = BytesIO(
             self.file_content.encode())
         mock_storage_backend.exists.return_value = True
-        (filename, bytes_io) = get_stored_upload_file_data(self.su)
-        file_data = bytes_io.read().decode()
+        # Updated as per comment in "test_store_upload_unset_file_store_path"
+        (filename, byte_data) = get_stored_upload_file_data(self.su)
+        file_data = byte_data.decode()
         local_settings.STORAGES_BACKEND = None
         django_drf_filepond.api.storage_backend = None
         self.assertEqual(file_data, self.file_content,

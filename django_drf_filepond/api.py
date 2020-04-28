@@ -18,7 +18,6 @@ import shortuuid
 from django_drf_filepond.models import TemporaryUpload, StoredUpload
 from django_drf_filepond.storage_utils import _get_storage_backend
 from django_drf_filepond.exceptions import ConfigurationError
-from io import BytesIO
 
 # TODO: Need to refactor this into a class and put the initialisation of
 # the storage backend into the init.
@@ -281,12 +280,13 @@ def get_stored_upload_file_data(stored_upload):
                                      'configured correctly.')
 
         file_path_base = local_settings.FILE_STORE_PATH
-        if not file_path_base:
-            file_path_base = ''
+        #  This code is redundant, this case will be picked up by the
+        #  not local_settings.FILE_STORE_PATH in the above statement.
+        #   if not file_path_base:
+        #       file_path_base = ''
 
     # See if the stored file with the path specified in su exists
     # in the file store location
-    bytes_io = None
     file_path = os.path.join(file_path_base, stored_upload.file.name)
     if storage_backend:
         if not storage_backend.exists(file_path):
@@ -295,8 +295,7 @@ def get_stored_upload_file_data(stored_upload):
             raise FileNotFoundError(
                 'File [%s] for upload_id [%s] not found on remote file '
                 'store.' % (file_path, stored_upload.upload_id))
-        with storage_backend.open(file_path, 'r') as remote_file:
-            bytes_io = BytesIO(remote_file.read())
+        file_data = stored_upload.file.read()
     else:
         if ((not os.path.exists(file_path)) or
                 (not os.path.isfile(file_path))):
@@ -306,15 +305,10 @@ def get_stored_upload_file_data(stored_upload):
                                     % file_path)
 
         # We now know that the file exists locally and is not a directory
-        try:
-            with open(file_path, 'rb') as f:
-                bytes_io = BytesIO(f.read())
-        except IOError as e:
-            LOG.error('Error reading requested file: %s' % str(e))
-            raise e
+        file_data = stored_upload.file.read()
 
     filename = os.path.basename(stored_upload.file.name)
-    return (filename, bytes_io)
+    return (filename, file_data)
 
 
 def delete_stored_upload(upload_id, delete_file=False):
