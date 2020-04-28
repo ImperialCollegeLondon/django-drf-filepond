@@ -280,8 +280,10 @@ def get_stored_upload_file_data(stored_upload):
                                      'configured correctly.')
 
         file_path_base = local_settings.FILE_STORE_PATH
-        if not file_path_base:
-            file_path_base = ''
+        #  This code is redundant, this case will be picked up by the
+        #  not local_settings.FILE_STORE_PATH in the above statement.
+        #   if not file_path_base:
+        #       file_path_base = ''
 
     # See if the stored file with the path specified in su exists
     # in the file store location
