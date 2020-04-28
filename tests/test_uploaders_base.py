@@ -1,4 +1,5 @@
 import logging
+import six
 
 from django.test import TestCase
 
@@ -177,7 +178,7 @@ class UploadersBaseTestCase(TestCase):
 
     def test_file_id_wrong_data_type(self):
         # Test using bytes instead of str
-        file_id = _get_file_id().encode()
+        file_id = six.ensure_binary(_get_file_id())
         self.assertFalse(
             FilepondFileUploader._file_id_valid(file_id),
             ('The provided file ID is of the wrong data type, this test '

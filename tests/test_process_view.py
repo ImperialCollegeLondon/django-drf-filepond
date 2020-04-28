@@ -9,20 +9,21 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.test.client import encode_multipart, RequestFactory
 from django.urls import reverse
-
-from django_drf_filepond import drf_filepond_settings
-import django_drf_filepond.views as views
-from tests.utils import remove_file_upload_dir_if_required
 from rest_framework import status
 from rest_framework.response import Response
+from six import ensure_text
+
+from django_drf_filepond import drf_filepond_settings
 import django_drf_filepond
-from unittest.mock import MagicMock
+import django_drf_filepond.views as views
+from tests.utils import remove_file_upload_dir_if_required
+
 
 # Python 2/3 support
 try:
-    from unittest.mock import patch, ANY
+    from unittest.mock import patch, MagicMock, ANY
 except ImportError:
-    from mock import patch, ANY
+    from mock import patch, MagicMock, ANY
 
 LOG = logging.getLogger(__name__)
 #
@@ -221,8 +222,8 @@ class ProcessTestCase(TestCase):
         # phase and it has already imported the unmocked object.
         # For testing we manually assign the mocked object here and then
         # revert to the original after the view call.
-        upload_id = 'ababababababababababab'
-        file_id = 'xyxyxyxyxyxyxyxyxyxyxy'
+        upload_id = ensure_text('ababababababababababab')
+        file_id = ensure_text('xyxyxyxyxyxyxyxyxyxyxy')
         mock_gfid = MagicMock(spec='django_drf_filepond.utils._get_file_id')
         mock_gfid.side_effect = [upload_id, file_id, upload_id, file_id]
 

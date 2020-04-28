@@ -1,12 +1,13 @@
 import logging
+import re
 
 from django.contrib.auth.models import User, AnonymousUser
 from django.test import TestCase
 from rest_framework.request import Request
+import shortuuid
+from six import text_type
 
 from django_drf_filepond.utils import _get_user, _get_file_id
-import re
-import shortuuid
 
 
 # Python 2/3 support
@@ -42,7 +43,8 @@ class UtilsTestCase(TestCase):
 
     def test_get_file_id(self):
         fid = _get_file_id()
-        self.assertEqual(type(fid), str, 'The file ID must be a string.')
+        self.assertTrue(isinstance(fid, text_type),
+                        'The file ID must be a string.')
         id_format = re.compile('^([%s]){22}$' % (shortuuid.get_alphabet()))
         self.assertRegex(fid, id_format, ('The generated ID does not match '
                                           'the defined ID format.'))

@@ -10,6 +10,13 @@ from django_drf_filepond.models import TemporaryUpload, storage,\
     TemporaryUploadChunked
 from io import BytesIO, StringIO
 from django_drf_filepond.utils import _get_user
+from six import text_type, binary_type
+
+# There's no built in FileNotFoundError in Python 2
+try:
+    FileNotFoundError
+except NameError:
+    FileNotFoundError = IOError
 
 LOG = logging.getLogger(__name__)
 
@@ -68,13 +75,13 @@ class FilepondFileUploader(object):
     # passed in as parameters to handle_upload.
     @classmethod
     def _file_id_valid(cls, file_id):
-        if (type(file_id) == str) and (len(file_id) == 22):
+        if isinstance(file_id, text_type) and (len(file_id) == 22):
             return True
         return False
 
     @classmethod
     def _upload_id_valid(cls, upload_id):
-        if (type(upload_id) == str) and (len(upload_id) == 22):
+        if isinstance(upload_id, text_type) and (len(upload_id) == 22):
             return True
         return False
 
@@ -214,9 +221,9 @@ class FilepondChunkedFileUploader(FilepondFileUploader):
             return Response('A required chunk parameter is missing.',
                             status=status.HTTP_400_BAD_REQUEST)
 
-        if type(file_data) == bytes:
+        if isinstance(file_data, binary_type):
             fd = BytesIO(file_data)
-        elif type(file_data) == str:
+        elif isinstance(file_data, text_type):
             fd = StringIO(file_data)
         else:
             return Response('Upload data type not recognised.',

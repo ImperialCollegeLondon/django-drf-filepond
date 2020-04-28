@@ -11,19 +11,20 @@ from rest_framework.request import Request
 
 from django_drf_filepond.uploaders import FilepondChunkedFileUploader, storage
 import django_drf_filepond
+from six import ensure_text, ensure_binary
 
 
 # Python 2/3 support
 try:
-    from unittest.mock import MagicMock
+    from unittest.mock import MagicMock, patch
 except ImportError:
-    from mock import MagicMock
+    from mock import MagicMock, patch
 
-# Python 2/3 support
+# There's no built in FileNotFoundError in Python 2
 try:
-    from unittest.mock import patch
-except ImportError:
-    from mock import patch
+    FileNotFoundError
+except NameError:
+    FileNotFoundError = IOError
 
 LOG = logging.getLogger(__name__)
 #
@@ -169,6 +170,8 @@ class UploadersFileChunkedTestCase(TestCase):
         self.uploader = FilepondChunkedFileUploader()
         self.request = MagicMock(spec=Request)
         self.request.user = AnonymousUser()
+        self.request.data = ensure_text(
+            'This is the test upload chunk data...')
 
     # Since we're working with mocked requests and getting responses that
     # haven't been processed via a DRF/Django view, the response won't render
@@ -390,7 +393,6 @@ class UploadersFileChunkedTestCase(TestCase):
         self.request.META = {'HTTP_UPLOAD_OFFSET': 150000,
                              'HTTP_UPLOAD_LENGTH': tuc.total_size,
                              'HTTP_UPLOAD_NAME': tuc.upload_name}
-        self.request.data = 'This is the test upload chunk data...'
         with patch('os.path.exists', return_value=False):
             res = self.uploader._handle_chunk_upload(self.request,
                                                      self.upload_id)
@@ -404,7 +406,8 @@ class UploadersFileChunkedTestCase(TestCase):
         self.request.META = {'HTTP_UPLOAD_OFFSET': 150000,
                              'HTTP_UPLOAD_LENGTH': tuc.total_size,
                              'HTTP_UPLOAD_NAME': tuc.upload_name}
-        self.request.data = 'This is the test upload chunk data...'.encode()
+        self.request.data = ensure_binary(
+            'This is the test upload chunk data...')
 
         with patch('os.path.exists', return_value=True):
             res = self.uploader._handle_chunk_upload(self.request,
@@ -418,7 +421,6 @@ class UploadersFileChunkedTestCase(TestCase):
         self.request.META = {'HTTP_UPLOAD_OFFSET': 150000,
                              'HTTP_UPLOAD_LENGTH': tuc.total_size,
                              'HTTP_UPLOAD_NAME': tuc.upload_name}
-        self.request.data = str('This is the test upload chunk data...')
 
         with patch('os.path.exists', return_value=True):
             res = self.uploader._handle_chunk_upload(self.request,
@@ -432,7 +434,7 @@ class UploadersFileChunkedTestCase(TestCase):
         self.request.META = {'HTTP_UPLOAD_OFFSET': 150000,
                              'HTTP_UPLOAD_LENGTH': tuc.total_size,
                              'HTTP_UPLOAD_NAME': self.upload_name}
-        self.request.data = str('This is the test upload chunk data...')
+
         with patch('os.path.exists', return_value=True):
             res = self.uploader._handle_chunk_upload(self.request,
                                                      self.upload_id)
@@ -450,7 +452,6 @@ class UploadersFileChunkedTestCase(TestCase):
         self.request.META = {'HTTP_UPLOAD_OFFSET': 150000,
                              'HTTP_UPLOAD_LENGTH': tuc.total_size,
                              'HTTP_UPLOAD_NAME': tuc.upload_name}
-        self.request.data = str('This is the test upload chunk data...')
 
         with patch('os.path.exists', return_value=True):
             res = self.uploader._handle_chunk_upload(self.request,
@@ -620,7 +621,10 @@ class UploadersFileChunkedTestCase(TestCase):
                             mock_rm.test_assert_has_calls([chunk_base + '_1',
                                                            chunk_base + '_2',
                                                            chunk_base + '_3'])
-                            tuc.delete.assert_called_once()
+                            # assert_called_once raises an AttributeError in
+                            # Py3.5, it seems it's not available so using
+                            # the _with variant instead.
+                            tuc.delete.assert_called_once_with()
 
     # TESTS FOR _handle_chunk_restart FUNCTION
     # ----------------------------------------
