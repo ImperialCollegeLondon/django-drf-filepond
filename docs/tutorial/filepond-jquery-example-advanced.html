@@ -110,9 +110,12 @@
 	    $('.pond').filepond();
 	    $('.pond').filepond('allowMultiple', true);
 	    $('.pond').filepond.setOptions({
+	    	chunkUploads: true,
+            chunkSize: 50000,
 	    	server: {
 	    		url: 'http://localhost:8000/fp',
 	    		process: '/process/',
+	    		patch: '/patch/',
 	    		revert: '/revert/',
 	    		fetch: '/fetch/?target=',
 	    		load: '/load/?target='
@@ -120,20 +123,21 @@
 	    	onaddfile: function(error, file) {
 	    		console.log('File added: [' + error + ']   file: [' + file.id + ']');
 	    		uploaded[file.id] = file.filename
-	    		updateButton();
+	    	},
+	    	onprocessfile: function(error, file) {
+	    		if(error === null) updateButton(true);
 	    	},
 	    	onremovefile: function(error, file) {
 	    		console.log('File removed: [' + error + ']   file: [' + file.id + ']');
 	    		if(file.id in uploaded) delete uploaded[file.id];
-	    		updateButton();
+	    		updateButton(false);
 	    	},
 	    	onerror: function(error, file, status) {
 	    		console.log('File error: [' + error + ']   file: [' + file.id + '], status [' + status + ']');
 	    		if(file.id in uploaded) {
 	    			delete uploaded[file.id];
 	    		}
-    			uploaded_error[file.id] = true;
-	    		updateButton();	    		
+    			uploaded_error[file.id] = true;	    		
 	    	}
 	    	
 	    });
@@ -151,14 +155,23 @@
 	    				// stored from the list.
 	    				for(var i = 0; i < response.uploads.length; i++) {
 	    					// Lookup the filepond ID of the successfully
-	    					// stored upload and remove by ID.
-	    					var fpId = $('.filepond--item input[value="' + response.uploads[i] +
-	    						'"]').parent().parent().attr('id');
-	    					fpId = fpId.substring(fpId.lastIndexOf('-') + 1);
+	    					// stored upload and remove by filepond ID.
+	    					// The lookup value we're using uses the serverID
+	    					// property on the filepond object.
+	    					var fileList = $('.pond').filepond('getFiles');
+	    					var fpId = '';
+	    					for(var j = 0; j < fileList.length; j++) {
+	    						if(fileList[j].serverId == response.uploads[i]) {
+	    							fpId = fileList[j].id;
+	    							break;
+	    						}
+	    					}
 	    					// Before removing the file, store it's name
 	    					// for use in the uploads table
-	    					uploadIdFilenames[response.uploads[i]] = uploaded[fpId];
-	    					$('.pond').filepond('removeFile', fpId);
+	    					if(fpId !== '') {
+	    						uploadIdFilenames[response.uploads[i]] = uploaded[fpId];
+	    						$('.pond').filepond('removeFile', fpId);
+	    					}
 	    				}
 	    				setTimeout(loadStoredUploads(response.uploads));
 	    			}
@@ -192,9 +205,16 @@
 	    	});
 	    });
 	    
-	    function updateButton() {
-	    	if(Object.keys(uploaded).length > 0) $('#uploads-submit').removeAttr('disabled');
-	    	else $('#uploads-submit').attr('disabled','');
+	    function updateButton(state) {
+	    	// If we've been asked to enable the button but there's nothing
+	    	// in the list of uploaded objects, don't enable it.
+	    	if(state && Object.keys(uploaded).length == 0) {
+	    		$('#uploads-submit').attr('disabled','');
+	    	}
+	    	else {
+	    		if(state) $('#uploads-submit').removeAttr('disabled');
+	    		else $('#uploads-submit').attr('disabled','');
+	    	}
 	    }
 	    
 	    function loadStoredUploads(upload_ids) {
