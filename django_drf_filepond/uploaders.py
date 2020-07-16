@@ -63,7 +63,9 @@ class FilepondFileUploader(object):
         if upload_field_name not in request.data:
             raise ParseError('Invalid request data has been provided.')
 
-        file_obj = request.data[upload_field_name]
+        uplad_fields = request.data.getlist(upload_field_name)
+        # file_metadata = uplad_fields[0]
+        file_obj = uplad_fields[1]
 
         return file_obj
 
