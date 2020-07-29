@@ -10,6 +10,7 @@ from django_drf_filepond.utils import _get_file_id
 from django.contrib.auth.models import AnonymousUser
 from django_drf_filepond.models import TemporaryUpload
 from django_drf_filepond.renderers import PlainTextRenderer
+from tests.utils import _setupRequestData
 
 # Python 2/3 support
 try:
@@ -56,7 +57,7 @@ class UploadersFileStandardTestCase(TestCase):
         self.request.user = AnonymousUser()
         file_obj = MagicMock(spec=InMemoryUploadedFile)
         file_obj.name = self.file_name
-        self.request.data = {'filepond': file_obj}
+        self.request.data = _setupRequestData({'filepond': ['{}', file_obj]})
         self.uploader = FilepondStandardFileUploader()
 
     def test_handle_valid_file_upload(self):
@@ -89,7 +90,8 @@ class UploadersFileStandardTestCase(TestCase):
                             status_code=500)
 
     def test_handle_file_upload_invalid_file_obj(self):
-        self.request.data = {'filepond': 'This is a test'.encode()}
+        self.request.data = _setupRequestData(
+            {'filepond': ['{}', 'This is a test'.encode()]})
         # When run through DRF, the ParseError raised by handle_upload would
         # be captured and converted into a 400 response. Here we have to
         # capture the ParseError directly to check that this is working.
@@ -99,7 +101,8 @@ class UploadersFileStandardTestCase(TestCase):
                                         self.file_id)
 
     def test_handle_file_upload_mising_file_obj(self):
-        self.request.data = {'notfilepond': 'This is a test'.encode()}
+        self.request.data = _setupRequestData(
+            {'notfilepond': ['{}', 'This is a test'.encode()]})
         # When run through DRF, the ParseError raised by handle_upload would
         # be captured and converted into a 400 response. Here we have to
         # capture the ParseError directly to check that this is working.

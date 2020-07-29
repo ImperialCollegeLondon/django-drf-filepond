@@ -63,9 +63,22 @@ class FilepondFileUploader(object):
         if upload_field_name not in request.data:
             raise ParseError('Invalid request data has been provided.')
 
+        # The content of the upload field is a django.http.QueryDict.
+        # The dict may have multiple values for a given field name.
+        # When accessing the QueryDict by field name, e.g.
+        # request.data['filepond'], if there is more than one value provided
+        # for the requested field name, the last one is returned, to get all
+        # values we use getlist(). For the file upload being handled here, we
+        # expect the file field to contain two values, the first is the file
+        # metadata, the second is the file object.
         upload_fields = request.data.getlist(upload_field_name)
-        # file_metadata = upload_fields[0]
-        file_obj = upload_fields[1]
+        if len(upload_fields) == 1:
+            file_obj = upload_fields[0]
+        elif len(upload_fields) == 2:
+            # file_metadata = upload_fields[0]
+            file_obj = upload_fields[1]
+        else:
+            raise ParseError('Invalid number of fields in request data.')
 
         return file_obj
 

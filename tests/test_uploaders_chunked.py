@@ -13,6 +13,7 @@ from django_drf_filepond.uploaders import FilepondChunkedFileUploader, storage
 import django_drf_filepond
 from six import ensure_text, ensure_binary
 
+from tests.utils import _setupRequestData
 
 # Python 2/3 support
 try:
@@ -239,7 +240,7 @@ class UploadersFileChunkedTestCase(TestCase):
     # TESTS FOR _handle_new_chunk_upload FUNCTION
     # -------------------------------------------
     def test_new_chunk_upload_invalid_file_value(self):
-        self.request.data = {'filepond': 'Some data.'}
+        self.request.data = _setupRequestData({'filepond': 'Some data.'})
         r = self.uploader._handle_new_chunk_upload(
             self.request, self.upload_id, self.file_id)
         r = self._prep_response(r)
@@ -248,7 +249,7 @@ class UploadersFileChunkedTestCase(TestCase):
                              'new chunked upload request.'), status_code=400)
 
     def test_new_chunk_upload_missing_len_header(self):
-        self.request.data = {'filepond': '{}'}
+        self.request.data = _setupRequestData({'filepond': '{}'})
         self.request.META = {}
         r = self.uploader._handle_new_chunk_upload(
             self.request, self.upload_id, self.file_id)
@@ -257,7 +258,7 @@ class UploadersFileChunkedTestCase(TestCase):
                             status_code=400)
 
     def test_new_chunk_upload_dir_outside_storage_base(self):
-        self.request.data = {'filepond': '{}'}
+        self.request.data = _setupRequestData({'filepond': '{}'})
         self.request.META = {'HTTP_UPLOAD_LENGTH': 1048576}
         r = self.uploader._handle_new_chunk_upload(
             self.request, '../../%s' % self.upload_id, self.file_id)
@@ -269,7 +270,7 @@ class UploadersFileChunkedTestCase(TestCase):
     def test_new_chunk_upload_base_storage_dir_not_exists(self, mock_ope):
         mock_ope.return_value = False
 
-        self.request.data = {'filepond': '{}'}
+        self.request.data = _setupRequestData({'filepond': '{}'})
         self.request.META = {'HTTP_UPLOAD_LENGTH': 1048576}
         r = self.uploader._handle_new_chunk_upload(
             self.request, self.upload_id, self.file_id)
@@ -280,7 +281,7 @@ class UploadersFileChunkedTestCase(TestCase):
     def test_new_chunk_upload_storage_dir_exists(self, mock_ope):
         mock_ope.return_value = True
 
-        self.request.data = {'filepond': '{}'}
+        self.request.data = _setupRequestData({'filepond': '{}'})
         self.request.META = {'HTTP_UPLOAD_LENGTH': 1048576}
 
         with patch('os.makedirs') as mock_osmd:
@@ -296,7 +297,7 @@ class UploadersFileChunkedTestCase(TestCase):
     def test_new_chunk_upload_successful(self, mock_ope):
         mock_ope.return_value = True
 
-        self.request.data = {'filepond': '{}'}
+        self.request.data = _setupRequestData({'filepond': '{}'})
         self.request.META = {'HTTP_UPLOAD_LENGTH': 1048576}
 
         with patch('os.makedirs'):

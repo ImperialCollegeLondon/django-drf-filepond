@@ -9,6 +9,7 @@ from django_drf_filepond.uploaders import FilepondFileUploader,\
 from rest_framework.exceptions import MethodNotAllowed, ParseError
 from django.core.files.uploadedfile import InMemoryUploadedFile
 from django_drf_filepond.utils import _get_file_id
+from tests.utils import _setupRequestData
 
 # Python 2/3 support
 try:
@@ -79,25 +80,27 @@ class UploadersBaseTestCase(TestCase):
         # object depending on what type of filepond request we're handling.
         # This doesn't actually matter in this and the subsequent get_file_obj
         # tests, this is just checking that the data is correctly extracted.
-        self.request.data = {'filepond': '{}'}
+        self.request.data = _setupRequestData({'filepond': '{}'})
         data = FilepondFileUploader._get_file_obj(self.request)
         self.assertEqual(data, '{}', 'Data was not correctly extracted from '
                          'the request.')
 
     def test_get_file_obj_custom_field_name(self):
-        self.request.data = {'fp_upload_field': 'somefield', 'somefield': '{}'}
+        self.request.data = _setupRequestData(
+            {'fp_upload_field': 'somefield', 'somefield': ['{}']})
         data = FilepondFileUploader._get_file_obj(self.request)
         self.assertEqual(data, '{}', 'Data was not correctly extracted from '
                          'the request.')
 
     def test_get_file_obj_std_field_name_missing(self):
-        self.request.data = {'somefield': '{}'}
+        self.request.data = _setupRequestData({'somefield': '{}'})
         with self.assertRaisesMessage(
                 ParseError, 'Invalid request data has been provided.'):
             FilepondFileUploader._get_file_obj(self.request)
 
     def test_get_file_obj_custom_field_name_missing(self):
-        self.request.data = {'fp_upload_field': 'somefield', 'a_field': '{}'}
+        self.request.data = _setupRequestData({'fp_upload_field': 'somefield',
+                                               'a_field': '{}'})
         with self.assertRaisesMessage(
                 ParseError, 'Invalid request data has been provided.'):
             FilepondFileUploader._get_file_obj(self.request)
@@ -119,7 +122,7 @@ class UploadersBaseTestCase(TestCase):
     def test_get_uploader_post_req_std(self):
         file_obj = MagicMock(spec=InMemoryUploadedFile)
         self.request.method = 'POST'
-        self.request.data = {'filepond': file_obj}
+        self.request.data = _setupRequestData({'filepond': [{}, file_obj]})
         uploader = FilepondFileUploader.get_uploader(self.request)
         self.assertIsInstance(uploader, FilepondStandardFileUploader,
                               'Expected a FilepondStandardFileUploader but '
@@ -127,7 +130,7 @@ class UploadersBaseTestCase(TestCase):
 
     def test_get_uploader_post_req_chunk(self):
         self.request.method = 'POST'
-        self.request.data = {'filepond': '{}'}
+        self.request.data = _setupRequestData({'filepond': '{}'})
         self.request.META = {'HTTP_UPLOAD_LENGTH': 1048576}
         uploader = FilepondFileUploader.get_uploader(self.request)
         self.assertIsInstance(uploader, FilepondChunkedFileUploader,
