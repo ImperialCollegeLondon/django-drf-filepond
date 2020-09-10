@@ -29,7 +29,8 @@ setup(
         "shortuuid>=0.5.0",
         "requests>=2.20.1",
         "django-storages>=1.8",
-        "six>=1.14.0"
+        "six>=1.14.0",
+        "swapper>=1.1.2.post1"
     ],
     tests_require=[
         "nose",
