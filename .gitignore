@@ -57,3 +57,5 @@ target/
 docs/_build/
 
 /.idea
+
+filepond_uploads
