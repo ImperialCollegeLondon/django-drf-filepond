@@ -8,8 +8,8 @@ from django.urls import reverse
 from django.utils import timezone
 
 import django_drf_filepond.drf_filepond_settings as local_settings
-from django_drf_filepond.models import StoredUpload
 from django_drf_filepond.utils import _get_file_id
+import swapper
 
 # Python 2/3 support
 try:
@@ -127,6 +127,8 @@ class LoadStoragesTestCase(TestCase):
 
         # Override storage object configured for the FileField in StoredUpload
         # at original init time since this happens before setUp is run.
+
+        StoredUpload = swapper.load_model("django_drf_filepond", "StoredUpload")
         StoredUpload.file.field.storage = self.mock_storage_backend
 
         # Now set up a stored version of this upload
@@ -180,6 +182,7 @@ class LoadStoragesTestCase(TestCase):
         self._check_file_response(response, self.fn, self.file_content)
 
     def test_load_remote_ambiguous_id_file(self):
+        StoredUpload = swapper.load_model("django_drf_filepond", "StoredUpload")
         su = StoredUpload.objects.get(upload_id=self.upload_id)
         su.file.name = os.path.join(os.path.dirname(su.file.name),
                                     self.test_filename)

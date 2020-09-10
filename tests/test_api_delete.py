@@ -21,11 +21,11 @@ import os
 
 from django.test import TestCase
 from django_drf_filepond.utils import _get_file_id
-from django_drf_filepond.models import StoredUpload
 
 import django_drf_filepond.drf_filepond_settings as local_settings
 from django.utils import timezone
 from django_drf_filepond.exceptions import ConfigurationError
+import swapper
 
 # Python 2/3 support
 try:
@@ -130,6 +130,8 @@ class ApiDeleteTestCase(TestCase):
         #                      'uploaded file.')
         self.fn = 'my_test_file.txt'
         self.test_target_filepath = os.path.join('test_storage', self.fn)
+
+        StoredUpload = swapper.load_model("django_drf_filepond", "StoredUpload")
         self.su = StoredUpload(upload_id=self.upload_id,
                                file=self.test_target_filepath,
                                uploaded=timezone.now(),
@@ -150,6 +152,8 @@ class ApiDeleteTestCase(TestCase):
         file_location = os.path.join(base_store_location,
                                      self.test_target_filepath)
 
+
+        StoredUpload = swapper.load_model("django_drf_filepond", "StoredUpload")
         with patch('os.remove') as os_patcher:
             with patch('os.path.exists') as exists:
                 with patch('os.path.isfile') as isfile:
@@ -173,6 +177,7 @@ class ApiDeleteTestCase(TestCase):
         local_settings.STORAGES_BACKEND = None
         self.api.storage_backend_initialised = False
 
+        StoredUpload = swapper.load_model("django_drf_filepond", "StoredUpload")
         with patch('os.remove') as os_patcher:
             with patch('os.path.exists') as exists:
                 with patch('os.path.isdir') as isdir:
@@ -193,6 +198,8 @@ class ApiDeleteTestCase(TestCase):
     def test_delete_stored_upload_invalid_id(self):
         test_id = 'abcdefghijklmnopqrstuv'
         ('No stored upload found with the specified ID [%s].' % (test_id))
+
+        StoredUpload = swapper.load_model("django_drf_filepond", "StoredUpload")
         with self.assertRaisesMessage(
                 StoredUpload.DoesNotExist,
                 'StoredUpload matching query does not exist.'):

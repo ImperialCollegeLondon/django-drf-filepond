@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 import importlib
 import logging
 import mimetypes
+import swapper
 
 import django_drf_filepond.drf_filepond_settings as local_settings
 import os
@@ -19,7 +20,7 @@ from django.http.response import HttpResponse, HttpResponseNotFound, \
 from django_drf_filepond.api import get_stored_upload, \
     get_stored_upload_file_data
 from django_drf_filepond.exceptions import ConfigurationError
-from django_drf_filepond.models import TemporaryUpload, storage, StoredUpload
+from django_drf_filepond.models import TemporaryUpload, storage
 from django_drf_filepond.parsers import PlainTextParser, UploadChunkParser
 from django_drf_filepond.renderers import PlainTextRenderer
 from io import BytesIO
@@ -228,6 +229,7 @@ class LoadView(APIView):
             return Response('An invalid ID has been provided.',
                             status=status.HTTP_400_BAD_REQUEST)
 
+        StoredUpload = swapper.load_model("django_drf_filepond", "StoredUpload")
         try:
             su = get_stored_upload(upload_id)
         except StoredUpload.DoesNotExist as e:

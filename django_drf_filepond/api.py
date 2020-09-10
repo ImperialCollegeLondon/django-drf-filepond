@@ -10,12 +10,13 @@ import logging
 import ntpath
 import os
 import shutil
+import swapper
 
 import django_drf_filepond.drf_filepond_settings as local_settings
 from django.core.exceptions import ImproperlyConfigured
 import re
 import shortuuid
-from django_drf_filepond.models import TemporaryUpload, StoredUpload
+from django_drf_filepond.models import TemporaryUpload
 from django_drf_filepond.storage_utils import _get_storage_backend
 from django_drf_filepond.exceptions import ConfigurationError
 
@@ -156,6 +157,7 @@ def _store_upload_local(destination_file_path, destination_file_name,
         raise FileExistsError('The specified temporary file cannot be stored'
                               ' to the specified location - file exists.')
 
+    StoredUpload = swapper.load_model("django_drf_filepond", "StoredUpload")
     su = StoredUpload(upload_id=temp_upload.upload_id,
                       file=destination_file_path,
                       uploaded=temp_upload.uploaded,
@@ -185,6 +187,8 @@ def _store_upload_remote(destination_file_path, destination_file_name,
     destination_file = os.path.join(destination_file_path, target_filename)
     try:
         storage_backend.save(destination_file, temp_upload.file)
+
+        StoredUpload = swapper.load_model("django_drf_filepond", "StoredUpload")
         su = StoredUpload(upload_id=temp_upload.upload_id,
                           file=destination_file,
                           uploaded=temp_upload.uploaded,
@@ -226,6 +230,7 @@ def get_stored_upload(upload_id):
         LOG.debug('The provided string doesn\'t seem to be an '
                   'upload ID. Assuming it is a filename/path.')
 
+    StoredUpload = swapper.load_model("django_drf_filepond", "StoredUpload")
     if not param_filename:
         try:
             su = StoredUpload.objects.get(upload_id=upload_id)
@@ -320,6 +325,7 @@ def delete_stored_upload(upload_id, delete_file=False):
     is made explicit that the stored file associated with the upload will be
     permanently deleted.
     """
+    StoredUpload = swapper.load_model("django_drf_filepond", "StoredUpload")
     try:
         su = get_stored_upload(upload_id)
     except StoredUpload.DoesNotExist as e:

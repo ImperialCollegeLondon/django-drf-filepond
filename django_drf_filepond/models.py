@@ -16,6 +16,7 @@ import django_drf_filepond.drf_filepond_settings as local_settings
 from django.utils.functional import LazyObject
 from django_drf_filepond.storage_utils import _get_storage_backend
 
+import swapper
 
 LOG = logging.getLogger(__name__)
 
@@ -138,7 +139,7 @@ class TemporaryUploadChunked(models.Model):
                                     blank=True, on_delete=models.CASCADE)
 
 
-class StoredUpload(models.Model):
+class BaseStoredUpload(models.Model):
 
     # The unique upload ID assigned to this file when it was originally
     # uploaded (or retrieved from a remote URL)
@@ -158,6 +159,15 @@ class StoredUpload(models.Model):
         if not fsp:
             fsp = ''
         return os.path.join(fsp, self.file.name)
+
+    class Meta:
+        abstract = True
+
+
+class StoredUpload(BaseStoredUpload):
+
+    class Meta:
+        swappable = swapper.swappable_setting('django_drf_filepond', 'StoredUpload')
 
 
 # When a TemporaryUpload record is deleted, we need to delete the

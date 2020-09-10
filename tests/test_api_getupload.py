@@ -20,8 +20,8 @@ from django_drf_filepond.api import get_stored_upload, \
 import django_drf_filepond.api
 import django_drf_filepond.drf_filepond_settings as local_settings
 from django_drf_filepond.exceptions import ConfigurationError
-from django_drf_filepond.models import StoredUpload
 from django_drf_filepond.utils import _get_file_id
+import swapper
 
 # Python 2/3 support
 try:
@@ -66,6 +66,7 @@ class ApiGetUploadTestCase(TestCase):
                              'uploaded file.')
         self.fn = 'my_test_file.txt'
         self.test_target_filename = '/test_storage/testfile.txt'
+        StoredUpload = swapper.load_model("django_drf_filepond", "StoredUpload")
         self.su = StoredUpload(upload_id=self.upload_id,
                                file=self.test_target_filename[1:],
                                uploaded=timezone.now())

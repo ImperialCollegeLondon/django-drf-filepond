@@ -18,7 +18,8 @@ import os
 from django.test import TestCase
 from django_drf_filepond.utils import _get_file_id
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django_drf_filepond.models import TemporaryUpload, StoredUpload
+from django_drf_filepond.models import TemporaryUpload
+import swapper
 
 import django_drf_filepond.drf_filepond_settings as local_settings
 
@@ -172,6 +173,8 @@ class ApiRemoteTestCase(TestCase):
             test_target_filename, mock_fieldfile)
 
         upload_id = su.upload_id
+
+        StoredUpload = swapper.load_model("django_drf_filepond", "StoredUpload")
         su = StoredUpload.objects.get(upload_id=upload_id)
         LOG.debug('About to check that file path <%s> and stored path <%s> '
                   'are equal' % (test_target_filename, su.file.name))

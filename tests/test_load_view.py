@@ -2,7 +2,7 @@ import logging
 
 from django.test.testcases import TestCase
 from django_drf_filepond.utils import _get_file_id
-from django_drf_filepond.models import TemporaryUpload, StoredUpload
+from django_drf_filepond.models import TemporaryUpload
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 import django_drf_filepond.drf_filepond_settings as local_settings
@@ -10,6 +10,7 @@ import cgi
 import os
 import shutil
 import django_drf_filepond
+import swapper
 
 LOG = logging.getLogger(__name__)
 
@@ -95,6 +96,7 @@ class LoadTestCase(TestCase):
         tu.save()
 
         # Now set up a stored version of this upload
+        StoredUpload = swapper.load_model("django_drf_filepond", "StoredUpload")
         su = StoredUpload(upload_id=self.upload_id,
                           file=('%s'
                                      % (self.fn)),
@@ -134,6 +136,7 @@ class LoadTestCase(TestCase):
                             status_code=404)
 
     def test_load_uploadid_successful_request(self):
+        StoredUpload = swapper.load_model("django_drf_filepond", "StoredUpload")
         su = StoredUpload.objects.get(upload_id=self.upload_id)
         tu = TemporaryUpload.objects.get(upload_id=self.upload_id)
         su_target_dir = os.path.join(LoadTestCase.FILE_STORE_PATH,
@@ -148,6 +151,7 @@ class LoadTestCase(TestCase):
         self._check_file_response(response, self.fn, self.file_content)
 
     def test_load_filename_successful_request(self):
+        StoredUpload = swapper.load_model("django_drf_filepond", "StoredUpload")
         su = StoredUpload.objects.get(upload_id=self.upload_id)
         tu = TemporaryUpload.objects.get(upload_id=self.upload_id)
         su_target_dir = os.path.join(LoadTestCase.FILE_STORE_PATH,
@@ -161,6 +165,7 @@ class LoadTestCase(TestCase):
         self._check_file_response(response, self.fn, self.file_content)
 
     def test_load_ambiguous_id_file(self):
+        StoredUpload = swapper.load_model("django_drf_filepond", "StoredUpload")
         su = StoredUpload.objects.get(upload_id=self.upload_id)
         tu = TemporaryUpload.objects.get(upload_id=self.upload_id)
         su_target_dir = os.path.join(LoadTestCase.FILE_STORE_PATH,
@@ -184,6 +189,7 @@ class LoadTestCase(TestCase):
                                   self.file_content)
 
     def test_load_filename_invalid_filestore_setting(self):
+        StoredUpload = swapper.load_model("django_drf_filepond", "StoredUpload")
         su = StoredUpload.objects.get(upload_id=self.upload_id)
         fspath = local_settings.FILE_STORE_PATH
         local_settings.FILE_STORE_PATH = None
