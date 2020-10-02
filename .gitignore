@@ -57,3 +57,7 @@ target/
 docs/_build/
 
 /.idea
+
+# django-drf-filepond temp file uploads
+filepond_uploads
+
