@@ -256,7 +256,7 @@ class FilepondChunkedFileUploader(FilepondFileUploader):
         ulength = request.META.get('HTTP_UPLOAD_LENGTH', None)
         uname = request.META.get('HTTP_UPLOAD_NAME', None)
 
-        if (not uoffset) or (not ulength) or (uname is None):
+        if (uoffset is None) or (ulength is None) or (uname is None):
             return Response('Chunk upload is missing required metadata',
                             status=status.HTTP_400_BAD_REQUEST)
         if int(ulength) != tuc.total_size:
