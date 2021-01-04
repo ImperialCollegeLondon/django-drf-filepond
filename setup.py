@@ -34,7 +34,8 @@ setup(
     tests_require=[
         "nose",
         "coverage",
-        "httpretty",
+        "httpretty==1.0.3;python_version>='3.5'",
+        "httpretty==0.9.7;python_version=='2.7'",
         "mock>=3.0.0,<=3.0.5;python_version<='3.5'",
         "mock>=3.0.5;python_version>'3.5'",
         "paramiko"
@@ -53,6 +54,7 @@ setup(
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ]
 )
