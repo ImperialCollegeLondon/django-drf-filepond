@@ -14,6 +14,12 @@ import os
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# For testing with pathlib.Path based BASE_DIR
+# from pathlib import Path
+# BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Get a string representation of BASE_DIR in case it's provided as a Path
+BASE_DIR_STR = str(BASE_DIR)
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/2.1/howto/deployment/checklist/
@@ -76,7 +82,7 @@ WSGI_APPLICATION = 'tests.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'filepond_tests.db'),
+        'NAME': os.path.join(BASE_DIR_STR, 'filepond_tests.db'),
     }
 }
 
@@ -126,7 +132,7 @@ STATIC_URL = '/static/'
 # The URL base used for the URL import
 URL_BASE = r'^fp/'
 
-DJANGO_DRF_FILEPOND_FILE_STORE_PATH = os.path.join(BASE_DIR, 'filestore')
+DJANGO_DRF_FILEPOND_FILE_STORE_PATH = os.path.join(BASE_DIR_STR, 'filestore')
 
 LOGGING = {
     'version': 1,

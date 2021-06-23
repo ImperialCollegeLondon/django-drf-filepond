@@ -26,6 +26,8 @@ except ImportError:
     from mock import patch, MagicMock, ANY
 
 LOG = logging.getLogger(__name__)
+
+
 #
 # New tests for checking file storage outside of BASE_DIR (see #18)
 #
@@ -44,8 +46,10 @@ LOG = logging.getLogger(__name__)
 # test_new_chunked_upload_request: Check that a new chunked upload request
 #    results in handle_upload being called on the chunked uploader class.
 #
-
-
+# UPDATE: June 2021:
+# test_process_data_BASE_DIR_pathlib: Tests the upload process when BASE_DIR
+#    is set as a pathlib.Path object as it is by default in more recent Django
+#    versions - at present, django-drf-filepond uses regular strings for paths
 class ProcessTestCase(TestCase):
 
     def setUp(self):
@@ -56,6 +60,31 @@ class ProcessTestCase(TestCase):
 
     def test_process_data(self):
         self._process_data()
+
+    def test_process_data_BASE_DIR_pathlib(self):
+        # In recent Django versions, BASE_DIR is set by default to
+        # Path(__file__).resolve().parent.parent when creating a new project
+        # using django-admin. Older versions of Django, in use when
+        # django-drf-filepond was originally created used regular strings
+        # for paths. Need to be able to handle both.
+        # Set modified BASE_DIR using context manager - on older Python
+        # versions that don't have pathlib support, fall back to strings
+        OLD_BASE_DIR = drf_filepond_settings.BASE_DIR
+        try:
+            from pathlib import Path
+            NEW_BASE_DIR = Path(__file__).resolve().parent.parent
+            LOG.debug('PATHLIB TEST: Old BASE_DIR: %s   NEW_BASE_DIR: %s' %
+                      (repr(drf_filepond_settings.BASE_DIR),
+                       repr(NEW_BASE_DIR)))
+            drf_filepond_settings.BASE_DIR = NEW_BASE_DIR
+        except ImportError:
+            LOG.debug('NO PATHLIB SUPPORT FOR PATHLIB TEST. '
+                      'FALLING BACK TO USING REGULAR STRING PATHS...')
+
+        try:
+            self._process_data()
+        finally:
+            drf_filepond_settings.BASE_DIR = OLD_BASE_DIR
 
     def test_UPLOAD_TMP_not_set(self):
         upload_tmp = drf_filepond_settings.UPLOAD_TMP

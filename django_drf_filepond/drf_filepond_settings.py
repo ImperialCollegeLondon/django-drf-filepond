@@ -21,7 +21,16 @@ _app_prefix = 'DJANGO_DRF_FILEPOND_'
 # installed app base directory to use as an alternative.
 BASE_DIR = os.path.dirname(django_drf_filepond.__file__)
 if hasattr(settings, 'BASE_DIR'):
+    # If BASE_DIR is set in the main settings, get it and process it to
+    # handle py3.5 where pathlib exists but os.path.join can't accept a
+    # pathlib object (ensure we always pass a string to os.path.join)
     BASE_DIR = settings.BASE_DIR
+    try:
+        from pathlib import Path
+        if isinstance(BASE_DIR, Path):
+            BASE_DIR = str(BASE_DIR)
+    except ImportError:
+        pass
 
 # The location where uploaded files are temporarily stored. At present,
 # this must be a subdirectory of settings.BASE_DIR
