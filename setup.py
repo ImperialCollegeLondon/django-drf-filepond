@@ -5,7 +5,7 @@ with open("README.md", "r") as readme:
 
 setup(
     name="django-drf-filepond",
-    version="0.3.0",
+    version="0.3.1",
     description="Filepond server app for Django REST Framework",
     long_description=long_description,
     long_description_content_type='text/markdown',
@@ -26,9 +26,11 @@ setup(
         "Django>=2.2;python_version>='3.6'",
         "djangorestframework==3.9.3;python_version=='2.7'",
         "djangorestframework>=3.9.3;python_version>='3.5'",
-        "shortuuid>=0.5.0",
+        "shortuuid==0.5.0;python_version=='2.7'",
+        "shortuuid>=0.5.0;python_version>='3.5'",
         "requests>=2.20.1",
-        "django-storages>=1.8",
+        "django-storages==1.9.1;python_version=='2.7'",
+        "django-storages>=1.9.1;python_version>='3.5'",
         "six>=1.14.0"
     ],
     tests_require=[

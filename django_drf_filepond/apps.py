@@ -14,9 +14,20 @@ class DjangoDrfFilepondConfig(AppConfig):
     verbose_name = 'FilePond Server-side API'
 
     def ready(self):
+        # Get BASE_DIR and process to ensure it works across platforms
+        # Handle py3.5 where pathlib exists but os.path.join can't accept a
+        # pathlib object (ensure we always pass a string to os.path.join)
+        BASE_DIR = local_settings.BASE_DIR
+        try:
+            from pathlib import Path
+            if isinstance(BASE_DIR, Path):
+                BASE_DIR = str(BASE_DIR)
+        except ImportError:
+            pass
+
         upload_tmp = getattr(
             local_settings, 'UPLOAD_TMP',
-            os.path.join(local_settings.BASE_DIR, 'filepond_uploads'))
+            os.path.join(BASE_DIR, 'filepond_uploads'))
 
         LOG.debug('Upload temp directory from top level settings: <%s>'
                   % (upload_tmp))

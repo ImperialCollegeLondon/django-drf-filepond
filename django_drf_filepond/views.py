@@ -30,7 +30,8 @@ from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django_drf_filepond.uploaders import FilepondFileUploader
-from django_drf_filepond.utils import _get_file_id, _get_user
+from django_drf_filepond.utils import _get_file_id, _get_user,\
+    get_local_settings_base_dir
 
 LOG = logging.getLogger(__name__)
 
@@ -104,8 +105,9 @@ class ProcessView(APIView):
         # TODO: Check whether this is necessary - maybe add a security
         # parameter that can be disabled to turn off this check if the
         # developer wishes?
-        if ((not (storage.location).startswith(local_settings.BASE_DIR)) and
-                (local_settings.BASE_DIR !=
+        LOCAL_BASE_DIR = get_local_settings_base_dir()
+        if ((not (storage.location).startswith(LOCAL_BASE_DIR)) and
+                (LOCAL_BASE_DIR !=
                  os.path.dirname(django_drf_filepond.__file__))):
             if not local_settings.ALLOW_EXTERNAL_UPLOAD_DIR:
                 return Response('The file upload path settings are not '

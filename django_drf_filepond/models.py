@@ -19,9 +19,17 @@ from django_drf_filepond.storage_utils import _get_storage_backend
 
 LOG = logging.getLogger(__name__)
 
+BASE_DIR = local_settings.BASE_DIR
+try:
+    from pathlib import Path
+    if isinstance(BASE_DIR, Path):
+        BASE_DIR = str(BASE_DIR)
+except ImportError:
+    pass
+
 FILEPOND_UPLOAD_TMP = getattr(
     local_settings, 'UPLOAD_TMP',
-    os.path.join(local_settings.BASE_DIR, 'filepond_uploads'))
+    os.path.join(BASE_DIR, 'filepond_uploads'))
 
 FILEPOND_FILE_STORE_PATH = getattr(local_settings, 'FILE_STORE_PATH', None)
 
