@@ -34,7 +34,7 @@ jobs:
         # stop the build if there are Python syntax errors or undefined names
         flake8 django_drf_filepond --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-		# Aim to reduce complexity to 10 but leave at 16 for now to support existing code
+        # Aim to reduce complexity to 10 but leave at 16 for now to support existing code
         flake8 django_drf_filepond --count --exit-zero --max-complexity=16 --max-line-length=80 --statistics
     - name: Test with nose
       run: |
