@@ -37,9 +37,9 @@ class FilepondFileUploader(object):
             if (file_obj == '{}' and
                     request.META.get('HTTP_UPLOAD_LENGTH', None)):
 
-                    LOG.debug('Returning CHUNKED uploader to handle '
-                              'upload request... ')
-                    return FilepondChunkedFileUploader()
+                LOG.debug('Returning CHUNKED uploader to handle '
+                          'upload request... ')
+                return FilepondChunkedFileUploader()
         else:
             raise MethodNotAllowed('%s is an invalid method type'
                                    % (request.method))

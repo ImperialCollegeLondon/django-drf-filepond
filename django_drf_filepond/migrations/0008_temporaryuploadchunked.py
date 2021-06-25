@@ -17,15 +17,33 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='TemporaryUploadChunked',
             fields=[
-                ('upload_id', models.CharField(max_length=22, primary_key=True, serialize=False, validators=[django.core.validators.MinLengthValidator(22)])),
-                ('file_id', models.CharField(max_length=22, validators=[django.core.validators.MinLengthValidator(22)])),
-                ('upload_dir', models.CharField(default=models.CharField(max_length=22, primary_key=True, serialize=False, validators=[django.core.validators.MinLengthValidator(22)]), max_length=512)),
+                ('upload_id',
+                 models.CharField(
+                     max_length=22, primary_key=True, serialize=False,
+                     validators=[
+                         django.core.validators.MinLengthValidator(22)])),
+                ('file_id',
+                 models.CharField(
+                     max_length=22,
+                     validators=[
+                         django.core.validators.MinLengthValidator(22)])),
+                ('upload_dir',
+                 models.CharField(
+                     default=models.CharField(
+                         max_length=22, primary_key=True, serialize=False,
+                         validators=[
+                             django.core.validators.MinLengthValidator(22)]),
+                     max_length=512)),
                 ('last_chunk', models.IntegerField(default=0)),
                 ('total_size', models.IntegerField(default=0)),
                 ('upload_name', models.CharField(default='', max_length=512)),
                 ('upload_complete', models.BooleanField(default=False)),
                 ('last_upload_time', models.DateTimeField(auto_now_add=True)),
-                ('uploaded_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
+                ('uploaded_by',
+                 models.ForeignKey(
+                     blank=True, null=True,
+                     on_delete=django.db.models.deletion.CASCADE,
+                     to=settings.AUTH_USER_MODEL)),
             ],
         ),
     ]
