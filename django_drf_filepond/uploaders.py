@@ -202,7 +202,7 @@ class FilepondChunkedFileUploader(FilepondFileUploader):
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         if os.path.exists(base_loc):
             try:
-                os.makedirs(chunk_dir, exist_ok=False)
+                os.makedirs(chunk_dir)
             except OSError as e:
                 LOG.debug('Unable to create chunk storage dir: %s' %
                           (str(e)))
