@@ -6,7 +6,12 @@
 
 django-drf-filepond supports remote storage of uploads via [*django-storages*](https://django-storages.readthedocs.io/)
 
+:new: Support for large file uploads (> ~2GB) now available from version 0.4.0 (see [#57](https://github.com/ImperialCollegeLondon/django-drf-filepond/issues/57)).<br/>
 :new: Support for filepond chunked uploads now available from version 0.3.0.
+
+
+:warning: **Release v0.4.0 includes a database update** in relation to the large upload support. If you don't wish to apply DB migrations within your application at this stage, please continue to use django-drf-filepond [v0.3.1](https://pypi.org/project/django-drf-filepond/0.3.1/). :warning:
+
 
 Further documentation and a tutorial are available at [https://django-drf-filepond.readthedocs.io](https://django-drf-filepond.readthedocs.io).
 
