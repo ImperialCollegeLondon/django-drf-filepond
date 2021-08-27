@@ -1,3 +1,4 @@
+from django_drf_filepond.models import TemporaryUploadChunked
 from io import BytesIO
 import logging
 import os
@@ -46,6 +47,9 @@ LOG = logging.getLogger(__name__)
 # test_new_chunked_upload_request: Check that a new chunked upload request
 #    results in handle_upload being called on the chunked uploader class.
 #
+# test_chunked_upload_large_file: Test that a new chunked upload request for
+#    a file greater than ~2GB in size is correctly handled.
+#
 # UPDATE: June 2021:
 # test_process_data_BASE_DIR_pathlib: Tests the upload process when BASE_DIR
 #    is set as a pathlib.Path object as it is by default in more recent Django
@@ -57,6 +61,8 @@ class ProcessTestCase(TestCase):
         data = BytesIO()
         data.write(os.urandom(16384))
         self.test_data = data
+
+        self.rf = RequestFactory()
 
     def test_process_data(self):
         self._process_data()
@@ -93,8 +99,7 @@ class ProcessTestCase(TestCase):
         # Set up and run request
         (encoded_form, content_type) = self._get_encoded_form('testfile.dat')
 
-        rf = RequestFactory()
-        req = rf.post(reverse('process'),
+        req = self.rf.post(reverse('process'),
                       data=encoded_form, content_type=content_type)
         pv = views.ProcessView.as_view()
         response = pv(req)
@@ -109,8 +114,7 @@ class ProcessTestCase(TestCase):
         views.storage = FileSystemStorage(location='/django_test')
         (encoded_form, content_type) = self._get_encoded_form('testfile.dat')
 
-        rf = RequestFactory()
-        req = rf.post(reverse('process'),
+        req = self.rf.post(reverse('process'),
                       data=encoded_form, content_type=content_type)
         pv = views.ProcessView.as_view()
         response = pv(req)
@@ -127,8 +131,7 @@ class ProcessTestCase(TestCase):
         upload_form = {'somekey':
                        SimpleUploadedFile('test.txt', self.test_data.read())}
         enc_form = encode_multipart('abc', upload_form)
-        rf = RequestFactory()
-        req = rf.post(reverse('process'), data=enc_form,
+        req = self.rf.post(reverse('process'), data=enc_form,
                       content_type='multipart/form-data; boundary=abc')
         pv = views.ProcessView.as_view()
         response = pv(req)
@@ -143,8 +146,7 @@ class ProcessTestCase(TestCase):
         cf = ContentFile(self.test_data.read(), name='test.txt')
         upload_form = {'filepond': cf}
         enc_form = encode_multipart('abc', upload_form)
-        rf = RequestFactory()
-        req = rf.post(reverse('process'), data=enc_form,
+        req = self.rf.post(reverse('process'), data=enc_form,
                       content_type='multipart/form-data; boundary=abc')
         req.FILES['filepond'] = cf
         pv = views.ProcessView.as_view()
@@ -170,8 +172,7 @@ class ProcessTestCase(TestCase):
         boundary = str(uuid.uuid4()).replace('-', '')
         enc_form = encode_multipart(boundary, upload_form)
 
-        rf = RequestFactory()
-        req = rf.post(reverse('process'), data=enc_form,
+        req = self.rf.post(reverse('process'), data=enc_form,
                       content_type='multipart/form-data; boundary=%s'
                       % boundary)
         pv = views.ProcessView.as_view()
@@ -188,8 +189,7 @@ class ProcessTestCase(TestCase):
         views.storage = FileSystemStorage(location='/tmp/uploads')
         (encoded_form, content_type) = self._get_encoded_form('testfile.dat')
 
-        rf = RequestFactory()
-        req = rf.post(reverse('process'),
+        req = self.rf.post(reverse('process'),
                       data=encoded_form, content_type=content_type)
         pv = views.ProcessView.as_view()
         response = pv(req)
@@ -213,8 +213,7 @@ class ProcessTestCase(TestCase):
 
         (encoded_form, content_type) = self._get_encoded_form('testfile.dat')
 
-        rf = RequestFactory()
-        req = rf.post(reverse('process'),
+        req = self.rf.post(reverse('process'),
                       data=encoded_form, content_type=content_type)
         pv = views.ProcessView.as_view()
         response = pv(req)
@@ -232,8 +231,7 @@ class ProcessTestCase(TestCase):
         # Set up and run request
         (encoded_form, content_type) = self._get_encoded_form('testfile.dat')
 
-        rf = RequestFactory()
-        req = rf.post(reverse('process'),
+        req = self.rf.post(reverse('process'),
                       data=encoded_form, content_type=content_type)
         pv = views.ProcessView.as_view()
         response = pv(req)
@@ -264,14 +262,37 @@ class ProcessTestCase(TestCase):
                                                 content_type='text/plain')
         (encoded_form, content_type) = self._get_encoded_form('testfile.dat',
                                                               file_spec='{}')
-        rf = RequestFactory(HTTP_UPLOAD_LENGTH=1048576)
-        req = rf.post(reverse('process'),
-                      data=encoded_form, content_type=content_type)
+        req = self.rf.post(reverse('process'),
+                           data=encoded_form, content_type=content_type,
+                           HTTP_UPLOAD_LENGTH=1048576)
         pv = views.ProcessView.as_view()
         pv(req)
         django_drf_filepond.views._get_file_id = original_gfid
 
         mock_chunked_ul.assert_called_once_with(ANY, upload_id, file_id)
+
+    def test_chunked_upload_large_file(self):
+        # Mock _get_file_id to return the specified file and upload IDs.
+        upload_id = ensure_text('ababababababababababab')
+        file_id = ensure_text('xyxyxyxyxyxyxyxyxyxyxy')
+        mock_gfid = MagicMock(spec='django_drf_filepond.utils._get_file_id')
+        mock_gfid.side_effect = [upload_id, file_id, upload_id, file_id]
+        original_gfid = django_drf_filepond.views._get_file_id
+        django_drf_filepond.views._get_file_id = mock_gfid
+
+        (encoded_form, content_type) = self._get_encoded_form('largefile.dat',
+                                                              file_spec='{}')
+        # Create a post request for a 3GB file...
+        req = self.rf.post(reverse('process'),
+                           data=encoded_form, content_type=content_type,
+                           HTTP_UPLOAD_LENGTH=3221225472)
+        # Run the request and check for the TemporaryUploadChunked object
+        pv = views.ProcessView.as_view()
+        response = pv(req)
+        django_drf_filepond.views._get_file_id = original_gfid
+        self.assertEqual(response.status_code, 200)
+        tuc = TemporaryUploadChunked.objects.get(upload_id=upload_id)
+        self.assertEqual(tuc.total_size, 3221225472)
 
     def _process_data(self, upload_field_name=None):
         tmp_upload_dir = drf_filepond_settings.UPLOAD_TMP
