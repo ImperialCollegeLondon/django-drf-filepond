@@ -294,8 +294,8 @@ from django_drf_filepond.api import get_stored_upload_file_data
 
 # Given a variable upload_id containing a 22-character unique 
 # upload ID representing a stored upload:
-su = get_store_upload(upload_id)
-(filename, bytes_io) = get_store_upload_file_data(su)
+su = get_stored_upload(upload_id)
+(filename, bytes_io) = get_stored_upload_file_data(su)
 file_data = bytes_io.read()
 ``` 
 
