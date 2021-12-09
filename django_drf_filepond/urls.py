@@ -8,7 +8,7 @@ import six
 if six.PY2:
     from django.conf.urls import url
 else:
-    from django.urls import re_path
+    from django.urls import re_path, path
 from django_drf_filepond.views import ProcessView, RevertView, LoadView,\
      RestoreView, FetchView, PatchView
 
@@ -34,11 +34,11 @@ if six.PY2:
     ]
 else:
     urlpatterns = [
-        re_path(r'^process/$', ProcessView.as_view(), name='process'),
+        path(r'^process/', ProcessView.as_view(), name='process'),
         re_path(r'^patch/(?P<chunk_id>[0-9a-zA-Z]{22})$', PatchView.as_view(),
                 name='patch'),
-        re_path(r'^revert/$', RevertView.as_view(), name='revert'),
-        re_path(r'^load/$', LoadView.as_view(), name='load'),
-        re_path(r'^restore/$', RestoreView.as_view(), name='restore'),
-        re_path(r'^fetch/$', FetchView.as_view(), name='fetch')
+        path(r'^revert/', RevertView.as_view(), name='revert'),
+        path(r'^load/', LoadView.as_view(), name='load'),
+        path(r'^restore/', RestoreView.as_view(), name='restore'),
+        path(r'^fetch/', FetchView.as_view(), name='fetch')
     ]
