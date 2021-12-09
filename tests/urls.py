@@ -14,10 +14,22 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 # from django.contrib import admin
-from django.urls import re_path, include
+import six
+if six.PY2:
+    from django.conf.urls import url
+else:
+    from django.urls import re_path
+from django.conf.urls import include
+
 from django.conf import settings
 
-urlpatterns = [
-    # path('admin/', admin.site.urls),
-    re_path(settings.URL_BASE, include('django_drf_filepond.urls'))
-]
+if six.PY2:
+    urlpatterns = [
+        # path('admin/', admin.site.urls),
+        url(settings.URL_BASE, include('django_drf_filepond.urls'))
+    ]
+else:
+    urlpatterns = [
+        # path('admin/', admin.site.urls),
+        re_path(settings.URL_BASE, include('django_drf_filepond.urls'))
+    ]
