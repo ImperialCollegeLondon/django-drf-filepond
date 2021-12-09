@@ -22,9 +22,9 @@ from tests.utils import remove_file_upload_dir_if_required
 
 # Python 2/3 support
 try:
-    from unittest.mock import patch, MagicMock, ANY
+    from unittest.mock import patch, MagicMock, Mock, ANY
 except ImportError:
-    from mock import patch, MagicMock, ANY
+    from mock import patch, MagicMock, Mock, ANY
 
 LOG = logging.getLogger(__name__)
 
@@ -288,7 +288,16 @@ class ProcessTestCase(TestCase):
                            HTTP_UPLOAD_LENGTH=3221225472)
         # Run the request and check for the TemporaryUploadChunked object
         pv = views.ProcessView.as_view()
-        response = pv(req)
+        # mock the os.makedirs and os.path.exists functions here so that no
+        # dir is created during the creation of the chunked uploader object.
+        os = MagicMock()
+        os.path = MagicMock()
+        os.path.exists = Mock(return_value=True)
+        os.path.abspath = Mock(return_value=drf_filepond_settings.UPLOAD_TMP)
+        os.makedirs = MagicMock()
+        with patch('os.path', os.path):
+            with patch('os.makedirs', os.makedirs):
+                response = pv(req)
         django_drf_filepond.views._get_file_id = original_gfid
         self.assertEqual(response.status_code, 200)
         tuc = TemporaryUploadChunked.objects.get(upload_id=upload_id)
