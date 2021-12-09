@@ -60,15 +60,15 @@ DJANGO_DRF_FILEPOND_UPLOAD_TMP = os.path.join(BASE_DIR, 'filepond-temp-uploads')
 Add the URL mappings for django-drf-filepond to your URL configuration in `urls.py`:
 
 ```python
-from django.conf.urls import url, include
+from django.urls import re_path, include
 
 urlpatterns = [
 	...
-	url(r'^fp/', include('django_drf_filepond.urls')),
+	re_path(r'^fp/', include('django_drf_filepond.urls')),
 ]
 ```
 
-On the client side, you need to set the endpoints of the `process`, `revert`, `fetch`, `load`, `restore` and `patch` functions to match the endpoint used in your path statement above. For example if the first parameter to `url` is `fp/` then the endpoint for the process function will be `/fp/process/`.
+On the client side, you need to set the endpoints of the `process`, `revert`, `fetch`, `load`, `restore` and `patch` functions to match the endpoint used in your path statement above. For example if the first parameter to `re_path` is `fp/` then the endpoint for the process function will be `/fp/process/`.
 
 ##### (Optional) 4. File storage configuration
 
