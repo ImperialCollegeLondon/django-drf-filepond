@@ -18,6 +18,9 @@ from django_drf_filepond.views import ProcessView, RevertView, LoadView,\
 # Django 4.0, django.conf.urls.url has been removed and we need to switch
 # to paths - this Python 2 specific block will ultimately be removed when
 # Python 2.7 support is dropped along with support for django 1.x.
+#
+# django-drf-filepond SUPPORT FOR PYTHON 2.7/DJANGO 1.11 WILL BE DEPRECATED
+# IN RELEASE 0.5.0. THIS WILL BE THE LAST RELEASE TO SUPPORT PYTHON 2.7.
 #############################################################################
 if six.PY2:
     urlpatterns = [
