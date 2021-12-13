@@ -34,11 +34,11 @@ if six.PY2:
     ]
 else:
     urlpatterns = [
-        path(r'^process/', ProcessView.as_view(), name='process'),
+        path('process/', ProcessView.as_view(), name='process'),
         re_path(r'^patch/(?P<chunk_id>[0-9a-zA-Z]{22})$', PatchView.as_view(),
                 name='patch'),
-        path(r'^revert/', RevertView.as_view(), name='revert'),
-        path(r'^load/', LoadView.as_view(), name='load'),
-        path(r'^restore/', RestoreView.as_view(), name='restore'),
-        path(r'^fetch/', FetchView.as_view(), name='fetch')
+        path('revert/', RevertView.as_view(), name='revert'),
+        path('load/', LoadView.as_view(), name='load'),
+        path('restore/', RestoreView.as_view(), name='restore'),
+        path('fetch/', FetchView.as_view(), name='fetch')
     ]
