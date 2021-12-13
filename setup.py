@@ -35,7 +35,8 @@ setup(
     ],
     tests_require=[
         "nose",
-        "coverage",
+        "coverage==5.5;python_version<='3.5'",
+        "coverage;python_version>'3.5'",
         "wheel;python_version=='3.5'",
         "httpretty==1.0.3;python_version>='3.5'",
         "httpretty==0.9.7;python_version=='2.7'",

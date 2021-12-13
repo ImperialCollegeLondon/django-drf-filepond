@@ -14,7 +14,7 @@ from rest_framework import status
 from rest_framework.response import Response
 from six import ensure_text
 
-from django_drf_filepond import drf_filepond_settings
+from django_drf_filepond import drf_filepond_settings, uploaders
 import django_drf_filepond
 import django_drf_filepond.views as views
 from tests.utils import remove_file_upload_dir_if_required
@@ -295,9 +295,8 @@ class ProcessTestCase(TestCase):
         os.path.exists = Mock(return_value=True)
         os.path.abspath = Mock(return_value=drf_filepond_settings.UPLOAD_TMP)
         os.makedirs = MagicMock()
-        with patch('os.path', os.path):
-            with patch('os.makedirs', os.makedirs):
-                response = pv(req)
+        with patch('django_drf_filepond.uploaders.os', os):
+            response = pv(req)
         django_drf_filepond.views._get_file_id = original_gfid
         self.assertEqual(response.status_code, 200)
         tuc = TemporaryUploadChunked.objects.get(upload_id=upload_id)
