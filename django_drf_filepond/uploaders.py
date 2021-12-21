@@ -1,7 +1,7 @@
 import logging
 import os
 
-from django.core.files.uploadedfile import UploadedFile, InMemoryUploadedFile
+from django.core.files.uploadedfile import UploadedFile
 from rest_framework import status
 from rest_framework.exceptions import ParseError, MethodNotAllowed
 from rest_framework.response import Response
@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from django_drf_filepond.models import TemporaryUpload, storage,\
     TemporaryUploadChunked
 from io import BytesIO, StringIO
-from django_drf_filepond.utils import _get_user
+from django_drf_filepond.utils import DrfFilepondChunkedUploadedFile, _get_user
 from six import text_type, binary_type
 
 # There's no built in FileNotFoundError in Python 2
@@ -329,29 +329,35 @@ class FilepondChunkedFileUploader(FilepondFileUploader):
 
         # Load each of the file parts into a BytesIO object and store them
         # via a TemporaryUpload object.
-        chunk_dir = os.path.join(storage.base_location, tuc.upload_dir)
-        file_data = BytesIO()
-        for i in range(1, tuc.last_chunk+1):
-            chunk_file = os.path.join(chunk_dir, '%s_%s' % (tuc.file_id, i))
-            if not os.path.exists(chunk_file):
-                raise FileNotFoundError('Chunk file not found for chunk <%s>'
-                                        % (i))
+        # chunk_dir = os.path.join(storage.base_location, tuc.upload_dir)
+        # file_data = BytesIO()
+        # for i in range(1, tuc.last_chunk+1):
+        #     chunk_file = os.path.join(chunk_dir, '%s_%s' % (tuc.file_id, i))
+        #     if not os.path.exists(chunk_file):
+        #         raise FileNotFoundError('Chunk file not found for chunk <%s>'
+        #                                 % (i))
 
-            with open(chunk_file, 'rb') as cf:
-                file_data.write(cf.read())
+        #     with open(chunk_file, 'rb') as cf:
+        #         file_data.write(cf.read())
 
-        # Prepare an InMemoryUploadedFile object so that the data can be
-        # successfully saved via the FileField in the TemporaryUpload object
-        memfile = InMemoryUploadedFile(file_data, None, tuc.file_id,
-                                       'application/octet-stream',
-                                       tuc.total_size, None)
+        # # Prepare an InMemoryUploadedFile object so that the data can be
+        # # successfully saved via the FileField in the TemporaryUpload object
+        # memfile = InMemoryUploadedFile(file_data, None, tuc.file_id,
+        #                                'application/octet-stream',
+        #                                tuc.total_size, None)
+
+        chunked_file = DrfFilepondChunkedUploadedFile(
+            tuc, 'application/octet-stream')
+        chunked_file.open('rb')
+
         tu = TemporaryUpload(upload_id=tuc.upload_id, file_id=tuc.file_id,
-                             file=memfile, upload_name=tuc.upload_name,
+                             file=chunked_file, upload_name=tuc.upload_name,
                              upload_type=TemporaryUpload.FILE_DATA,
                              uploaded_by=tuc.uploaded_by)
         tu.save()
 
         # Check that the final file is stored and of the correct size
+        chunk_dir = os.path.join(storage.base_location, tuc.upload_dir)
         stored_file_path = os.path.join(chunk_dir, tuc.file_id)
         if ((not os.path.exists(stored_file_path)) or
                 (not os.path.getsize(stored_file_path) == tuc.total_size)):
