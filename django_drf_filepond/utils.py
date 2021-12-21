@@ -1,6 +1,7 @@
 # A module containing some utility functions used by the views and uploaders
-from io import UnsupportedOperation
+import logging
 import os
+from io import UnsupportedOperation
 
 import shortuuid
 import six
@@ -10,6 +11,8 @@ from django.utils.functional import cached_property
 
 import django_drf_filepond.drf_filepond_settings as local_settings
 from django_drf_filepond.models import storage
+
+LOG = logging.getLogger(__name__)
 
 
 # Get the user associated with the provided request. If we have an anonymous
@@ -83,6 +86,7 @@ class DrfFilepondChunkedUploadedFile(UploadedFile):
         self.chunk_base = temp_chunked_upload_model_obj.file_id
         self.num_chunks = temp_chunked_upload_model_obj.last_chunk
         self.total_size = temp_chunked_upload_model_obj.total_size
+        self.name = temp_chunked_upload_model_obj.file_id
         self.first_file = os.path.join(
             self.chunk_dir, '%s_1' % (self.chunk_base))
         if not os.path.exists(self.first_file):
@@ -121,7 +125,8 @@ class DrfFilepondChunkedUploadedFile(UploadedFile):
         if self.closed:
             raise OSError('File must be opened with "open(mode)" before '
                           'attempting to read data')
-        chunk_size = chunk_size or self.DEFAULT_CHUNK_SIZE
+        # chunk_size = chunk_size or self.DEFAULT_CHUNK_SIZE
+        chunk_size = chunk_size or local_settings.TEMPFILE_READ_CHUNK_SIZE
 
         # Reset ourselves back to the start of the first chunk.
         if self.current_chunk == 1:
@@ -135,14 +140,15 @@ class DrfFilepondChunkedUploadedFile(UploadedFile):
             self.offset = 0
             self.file = open(self.first_file, self.mode)
 
+        LOG.debug('Using chunk size: %s' % chunk_size)
         while self.offset < self.total_size:
-            print('Current offset: %s' % self.offset)
+            LOG.debug('Current offset: %s' % self.offset)
             chunk_bytes_read = 0
             data = self.read(chunk_size)
             bytes_read = len(data)
             chunk_bytes_read += bytes_read
             self.offset += bytes_read
-            print('Offset after initial chunk read: %s' % self.offset)
+            # LOG.debug('Offset after initial chunk read: %s' % self.offset)
             while chunk_bytes_read < chunk_size:
                 # Open the next file and continue reading
                 self.file.close()
@@ -161,13 +167,15 @@ class DrfFilepondChunkedUploadedFile(UploadedFile):
                 chunk_bytes_read += bytes_read
                 self.offset += bytes_read
                 data += new_data
-                print('Offset after subsequent chunk read: %s' % self.offset)
+                LOG.debug('Offset after subsequent chunk read: %s'
+                          % self.offset)
 
             if (not data):
-                print('No more data, leaving loop at offset: %s' % self.offset)
+                LOG.debug('No more data, leaving loop at offset: %s'
+                          % self.offset)
                 break
 
-            print('Yielding data...')
+            # LOG.debug('Yielding data...')
             yield data
 
     def multiple_chunks(self, chunk_size=None):

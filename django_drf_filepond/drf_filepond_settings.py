@@ -69,3 +69,32 @@ ALLOW_EXTERNAL_UPLOAD_DIR = getattr(settings,
                                     False)
 # Optional permissions settings for each endpoint.
 PERMISSION_CLASSES = getattr(settings, _app_prefix+'PERMISSION_CLASSES', {})
+
+# Temporary filepond uploads larger than a certain size are broken up into
+# "chunks" to be sent from the client to the server. This setting DOES NOT
+# control the size of these chunks - they are instead controlled from the
+# client side by specifying the chunkSize property (see filepond server
+# properties: https://pqina.nl/filepond/docs/api/instance/properties/#server)
+#
+# This setting controls the way that chunks are read when django-drf-filepond
+# saves a chunked temporary upload on the server to a complete file. Chunks
+# are stored to individual chunk files on the server that when combined make
+# up the complete file being uploaded. When the upload from the client of all
+# chunks forming a full file is complete, the server combines the chunks into
+# a full file - to do this, it reads in the data from the chunk files in
+# blocks and writes them out to the complete file on disk. This setting
+# controls the size of these blocks, or chunks.
+#
+# For most users the default setting should be fine, however, this ultimately
+# controls how much memory is used (beyond that required for the original
+# data upload) when storing files. In the original implementation, all chunk
+# data was read in at once before writing the file content out to disk as a
+# complete file ending up in usage of memory 2*<size of upload>.
+# The default setting here of 1MB should result in total memory usage for
+# upload handling of <size of upload>+1MB. If you are working with very
+# large uploads, this may be inefficient and you may want to increase the
+# setting, at the expense of temporarily using more memory, to improve
+# efficiency.
+TEMPFILE_READ_CHUNK_SIZE = getattr(settings,
+                                   _app_prefix+'TEMPFILE_READ_CHUNK_SIZE',
+                                   1048576)
