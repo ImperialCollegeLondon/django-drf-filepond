@@ -40,6 +40,24 @@ LOG = logging.getLogger(__name__)
 # test_file_size_valid_files: Check that we can correctly calculate the
 #     size of a set of (mocked) file chunks.
 #
+# test_multiple_chunks: Check that multiple_chunks() returns True
+#     regardless of the chunk_size value specified.
+#
+# test_file_open_no_mode_error: Test that we can't open file without a mode
+#
+# test_file_open_no_first_file_error: Test that we can't successfully call
+#     open on the file object if first_file (the pointer to the first chunk
+#     file) is not specified.
+#
+# test_file_open_first_file_not_exists_error: Test that we can't
+#     successfully call open on the file if first_file doesn't exist
+#
+# test_file_open_chunk_and_offset_reset: Test that the chunk and offset are
+#     correctly reset to 1 and 0 repsectively and open uses first chunk.
+#
+# test_file_reopen_chunk_and_offset_reset: Test that chunk and offset are
+#     reset to 1 and 0 repsectively and open uses first chunk on reopen.
+#
 #############################################################################
 class ChunkedUploadedFileTestCase(TestCase):
 
@@ -47,7 +65,7 @@ class ChunkedUploadedFileTestCase(TestCase):
         tuc = TemporaryUploadChunked()
         tuc.upload_id = 'EpqiJa5KFg8mbXryAPFVbC'
         tuc.file_id = 'MifCFREScUJH8ybrYwduoB'
-        tuc.last_chunk = 13
+        tuc.last_chunk = 4
         tuc.upload_dir = 'EpqiJa5KFg8mbXryAPFVbC'
         tuc.upload_complete = True
         tuc.upload_name = 'test_data.dat'
@@ -66,7 +84,7 @@ class ChunkedUploadedFileTestCase(TestCase):
         # where self.chunk_base is tuc.file_id
         chunk_dir = self.test_file_loc + '/' + self.tuc.upload_dir
         first_file = chunk_dir + '/' + self.tuc.file_id + '_1'
-        os.path.join = Mock(side_effect=[chunk_dir, first_file])
+        os.path.join = Mock(side_effect=[chunk_dir] + [first_file]*5)
         if type(exists_val) == list:
             os.path.exists = Mock(side_effect=exists_val)
         else:
@@ -108,12 +126,6 @@ class ChunkedUploadedFileTestCase(TestCase):
                         self.tuc, 'application/octet-stream')
                     for chunk in f.chunks():
                         pass
-        # # Check the expected path was created/used when getting file location
-        # mock_os.path.join.assert_has_calls(
-        #     [call(self.test_file_loc, self.tuc.upload_dir),
-        #      call(chunk_dir, self.tuc.file_id + '_1')])
-        # mock_os.path.exists.assert_called_once_with(
-        #     '%s/%s_1' % (chunk_dir, self.tuc.file_id))
 
     def test_file_size_no_file(self):
         '''Check that we get an AttributeError if the directory
@@ -133,18 +145,75 @@ class ChunkedUploadedFileTestCase(TestCase):
         '''Check that we get an attribute error if the getsize call
            fails on one of the file chunks.'''
         mock_os, mock_storage, chunk_dir, first_file = self._setup_mocks(True)
+        # There's a getsize call in the class init and then we let one succeed
+        # in the size calculation look and the second will generate an OSError
         mock_os.path.getsize = Mock(
-            side_effect=[65536, OSError('Testing error getting size.')])
+            side_effect=[65536, 65536, OSError('Testing error getting size.')])
         with patch('django_drf_filepond.utils.os', mock_os):
             with patch('django_drf_filepond.utils.storage', mock_storage):
                 f = DrfFilepondChunkedUploadedFile(
                     self.tuc, 'application/octet-stream')
                 with self.assertRaisesRegex(
-                    AttributeError, ('Unable to determine the file\'s size'
+                    AttributeError, ('Unable to get the file\'s size'
                                      ': Testing error getting size.')):
                     f.size
 
     def test_file_size_valid_files(self):
         '''Check that we can correctly calculate the size of a set of
            (mocked) file chunks.'''
-        pass
+        mock_os, mock_storage, chunk_dir, first_file = self._setup_mocks(True)
+        # There's a getsize call in the class init - set a different value for
+        # this to avoid interference with the final calculated value.
+        mock_os.path.getsize = Mock(
+            side_effect=[10] + [65536]*4)
+        with patch('django_drf_filepond.utils.os', mock_os):
+            with patch('django_drf_filepond.utils.storage', mock_storage):
+                f = DrfFilepondChunkedUploadedFile(
+                    self.tuc, 'application/octet-stream')
+                fsize = f.size
+        self.assertEqual(fsize, 65536*4,
+                         msg='Got incorrect size for file chunks.')
+
+    def test_multiple_chunks(self):
+        '''Check that multiple_chunks() returns True regardless of
+           the chunk_size value specified.'''
+        mock_os, mock_storage, chunk_dir, first_file = self._setup_mocks(True)
+        # There's a getsize call in the class init - set a different value for
+        # this to avoid interference with the final calculated value.
+        with patch('django_drf_filepond.utils.os', mock_os):
+            with patch('django_drf_filepond.utils.storage', mock_storage):
+                f = DrfFilepondChunkedUploadedFile(
+                    self.tuc, 'application/octet-stream')
+                self.assertTrue(f.multiple_chunks(),
+                                msg='Multiple chunks should always be True')
+                self.assertTrue(f.multiple_chunks(1024),
+                                msg='Multiple chunks should always be True')
+                self.assertTrue(f.multiple_chunks(chunk_size=2048),
+                                msg='Multiple chunks should always be True')
+                self.assertTrue(f.multiple_chunks(chunk_size=4294967296),
+                                msg='Multiple chunks should always be True')
+
+    def test_file_open_no_mode_error(self):
+        '''Test that we can't open file without a mode'''
+        raise NotImplementedError('Test not yet implemented.')
+
+    def test_file_open_no_first_file_error(self):
+        '''Test that we can't successfully call open on the file object if
+           first_file (the pointer to the first chunk file) is not
+           specified.'''
+        raise NotImplementedError('Test not yet implemented.')
+
+    def test_file_open_first_file_not_exists_error(self):
+        '''Test that we can't successfully call open on the file if
+           first_file doesn't exist'''
+        raise NotImplementedError('Test not yet implemented.')
+
+    def test_file_open_chunk_and_offset_reset(self):
+        '''Test that the chunk and offset are correctly reset to 1 and 0
+           repsectively and open uses first chunk.'''
+        raise NotImplementedError('Test not yet implemented.')
+
+    def test_file_reopen_chunk_and_offset_reset(self):
+        '''Test that chunk and offset are reset to 1 and 0 repsectively and
+           open uses first chunk on reopen.'''
+        raise NotImplementedError('Test not yet implemented.')

@@ -181,16 +181,24 @@ class DrfFilepondChunkedUploadedFile(UploadedFile):
     def multiple_chunks(self, chunk_size=None):
         return True
 
+    # TODO: Add seek support - ensure we can seek to any offset
+    # through the different chunks.
+
     def open(self, mode):
         self.mode = mode
 
         if self.first_file and os.path.exists(self.first_file):
             if not self.closed:
+                # calls close on self.file which may not be the first file
+                # Once seek is implemented, this should call seek(0).
                 self.close()
 
+            # Now set the chunk back to 1 and offset to 0 and open
+            # the file for the first chunk.
             self.current_chunk = 1
             self.offset = 0
             self.file = open(self.first_file, self.mode)
         else:
+            # Retain the same ValueError/message as top-level superclass
             raise ValueError("The file cannot be reopened.")
         return self
