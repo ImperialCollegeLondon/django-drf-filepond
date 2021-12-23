@@ -5,6 +5,7 @@
 #  provides a file interface over a set of file chunks stored on disk.      #
 #                                                                           #
 #############################################################################
+from io import UnsupportedOperation
 from django_drf_filepond.utils import DrfFilepondChunkedUploadedFile
 from django_drf_filepond.models import TemporaryUploadChunked
 import logging
@@ -13,9 +14,9 @@ from django.test.testcases import TestCase
 
 # Python 2/3 support
 try:
-    from unittest.mock import MagicMock, Mock, patch, call
+    from unittest.mock import MagicMock, Mock, patch, call, mock_open
 except ImportError:
-    from mock import MagicMock, Mock, patch, call
+    from mock import MagicMock, Mock, patch, call, mock_open
 
 LOG = logging.getLogger(__name__)
 
@@ -58,6 +59,37 @@ LOG = logging.getLogger(__name__)
 # test_file_reopen_chunk_and_offset_reset: Test that chunk and offset are
 #     reset to 1 and 0 repsectively and open uses first chunk on reopen.
 #
+# test_chunks_default_chunk_size: Check that when no chunk size is specified
+#     on call to chunks(), that the default chunk size from settings is used.
+#
+# test_chunks_specified_size_used: Check that when a chunk size is specified
+#     on call to chunks(), that that this is used.
+#
+# test_chunks_seek0_when_on_chunk_1: Check that when the current chunk is
+#     chunk 1 the read seeks to 0 and resets the offset.
+#
+# test_chunks_seek_error: Check that an AttributeError and
+#     UnsupportedOperation are handled when calling seek if chunks is called
+#     when on chunk 1.
+#
+# test_chunks_reset_to_chunk_1_if_not_on_first_chunk: Check that when chunks
+#     is called and we're not on chunk 1 that the offset and chunk are reset
+#     and open is called on chunk 1s file.
+#
+# test_chunks_read_full_data_less_than_chunk_size: Read some data that has
+#     a total size of less than chunk size.
+#
+# test_chunks_read_full_data_multiple_chunks: Test reading of a set of
+#     multiple chunk "files" that are sized differently to the chunk size.
+#
+# test_chunks_read_full_data_exact_chunk_multiple: Test reading of a set of
+#     multiple chunk "files" that are each the same size as the chunk size.
+#
+# test_chunks_read_full_data_crossing_chunks: Test reading of a set of
+#     multiple chunk "files" that are sized differently to the chunk size,
+#     using a read chunk size that ensures we cross chunk file boundaries
+#     during some reads.
+#
 #############################################################################
 class ChunkedUploadedFileTestCase(TestCase):
 
@@ -83,8 +115,8 @@ class ChunkedUploadedFileTestCase(TestCase):
         # and self.first_file which is (self.chunk_dir, self.chunk_base + _1)
         # where self.chunk_base is tuc.file_id
         chunk_dir = self.test_file_loc + '/' + self.tuc.upload_dir
-        first_file = chunk_dir + '/' + self.tuc.file_id + '_1'
-        os.path.join = Mock(side_effect=[chunk_dir] + [first_file]*5)
+        self.first_file = chunk_dir + '/' + self.tuc.file_id + '_1'
+        os.path.join = Mock(side_effect=[chunk_dir] + [self.first_file]*5)
         if type(exists_val) == list:
             os.path.exists = Mock(side_effect=exists_val)
         else:
@@ -92,7 +124,7 @@ class ChunkedUploadedFileTestCase(TestCase):
         os.path.getsize = Mock(return_value=65536)
         storage = MagicMock()
         storage.base_location = self.test_file_loc
-        return(os, storage, chunk_dir, first_file)
+        return(os, storage, chunk_dir, self.first_file)
 
     def test_chunked_upload_first_file_missing(self):
         '''We expect a FileNotFoundError if we try to create a
@@ -178,8 +210,6 @@ class ChunkedUploadedFileTestCase(TestCase):
         '''Check that multiple_chunks() returns True regardless of
            the chunk_size value specified.'''
         mock_os, mock_storage, chunk_dir, first_file = self._setup_mocks(True)
-        # There's a getsize call in the class init - set a different value for
-        # this to avoid interference with the final calculated value.
         with patch('django_drf_filepond.utils.os', mock_os):
             with patch('django_drf_filepond.utils.storage', mock_storage):
                 f = DrfFilepondChunkedUploadedFile(
@@ -195,25 +225,186 @@ class ChunkedUploadedFileTestCase(TestCase):
 
     def test_file_open_no_mode_error(self):
         '''Test that we can't open file without a mode'''
-        raise NotImplementedError('Test not yet implemented.')
+        mock_os, mock_storage, chunk_dir, first_file = self._setup_mocks(True)
+        with patch('django_drf_filepond.utils.os', mock_os):
+            with patch('django_drf_filepond.utils.storage', mock_storage):
+                f = DrfFilepondChunkedUploadedFile(
+                    self.tuc, 'application/octet-stream')
+                with self.assertRaisesRegex(
+                    TypeError, (r'open\(\) missing 1 required positional '
+                                'argument: \'mode\'')):
+                    f.open()
 
     def test_file_open_no_first_file_error(self):
         '''Test that we can't successfully call open on the file object if
            first_file (the pointer to the first chunk file) is not
            specified.'''
-        raise NotImplementedError('Test not yet implemented.')
+        mock_os, mock_storage, chunk_dir, first_file = self._setup_mocks(True)
+        with patch('django_drf_filepond.utils.os', mock_os):
+            with patch('django_drf_filepond.utils.storage', mock_storage):
+                f = DrfFilepondChunkedUploadedFile(
+                    self.tuc, 'application/octet-stream')
+                f.first_file = None
+                with self.assertRaisesRegex(
+                        ValueError, 'The file cannot be reopened.'):
+                    f.open('rb')
 
     def test_file_open_first_file_not_exists_error(self):
         '''Test that we can't successfully call open on the file if
            first_file doesn't exist'''
-        raise NotImplementedError('Test not yet implemented.')
+        mock_os, mock_storage, chunk_dir, first_file = self._setup_mocks(
+            [True, False])
+        with patch('django_drf_filepond.utils.os', mock_os):
+            with patch('django_drf_filepond.utils.storage', mock_storage):
+                f = DrfFilepondChunkedUploadedFile(
+                    self.tuc, 'application/octet-stream')
+                self.assertEqual(f.first_file, self.first_file)
+                with self.assertRaisesRegex(
+                        ValueError, 'The file cannot be reopened.'):
+                    f.open('rb')
 
     def test_file_open_chunk_and_offset_reset(self):
         '''Test that the chunk and offset are correctly reset to 1 and 0
            repsectively and open uses first chunk.'''
-        raise NotImplementedError('Test not yet implemented.')
+        mock_os, mock_storage, chunk_dir, first_file = self._setup_mocks(True)
+        with patch('django_drf_filepond.utils.os', mock_os):
+            with patch('django_drf_filepond.utils.storage', mock_storage):
+                with patch('builtins.open', mock_open()) as mo:
+                    f = DrfFilepondChunkedUploadedFile(
+                        self.tuc, 'application/octet-stream')
+                    f.current_chunk = 12
+                    f.offset = 1048576
+                    self.assertEqual(f.first_file, self.first_file)
+                    f.open('rb')
+        self.assertEqual(f.current_chunk, 1)
+        self.assertEqual(f.offset, 0)
+        mo.assert_called_with(self.first_file, 'rb')
 
     def test_file_reopen_chunk_and_offset_reset(self):
         '''Test that chunk and offset are reset to 1 and 0 repsectively and
            open uses first chunk on reopen.'''
-        raise NotImplementedError('Test not yet implemented.')
+        mock_os, mock_storage, chunk_dir, first_file = self._setup_mocks(True)
+        with patch('django_drf_filepond.utils.os', mock_os):
+            with patch('django_drf_filepond.utils.storage', mock_storage):
+                with patch('builtins.open', mock_open()) as mo:
+                    f = DrfFilepondChunkedUploadedFile(
+                        self.tuc, 'application/octet-stream')
+                    self.assertEqual(f.first_file, self.first_file)
+                    f.open('rb')
+                    f.current_chunk = 12
+                    f.offset = 1048576
+                    self.assertFalse(f.file.close.called)
+                    f.file.closed = False
+                    # Attempt re-open
+                    f.open('rb')
+        self.assertEqual(f.current_chunk, 1)
+        self.assertEqual(f.offset, 0)
+        self.assertTrue(f.file.close.called)
+        mo.assert_called_with(self.first_file, 'rb')
+
+    def test_chunks_default_chunk_size(self):
+        '''Check that when no chunk size is specified on call to chunks(),
+           that the default chunk size from settings is used.'''
+        raise NotImplementedError('This test is not yet implemented.')
+
+    def test_chunks_specified_size_used(self):
+        '''Check that when a chunk size is specified on call to chunks(),
+           that that this is used.'''
+        raise NotImplementedError('This test is not yet implemented.')
+
+    def test_chunks_seek0_when_on_chunk_1(self):
+        '''Check that when the current chunk is chunk 1 the read seeks to
+           0 and resets the offset.'''
+        mock_os, mock_storage, chunk_dir, first_file = self._setup_mocks(True)
+        with patch('django_drf_filepond.utils.os', mock_os):
+            with patch('django_drf_filepond.utils.storage', mock_storage):
+                with patch('builtins.open', mock_open()) as mo:
+                    f = DrfFilepondChunkedUploadedFile(
+                        self.tuc, 'application/octet-stream')
+                    self.assertEqual(f.first_file, self.first_file)
+                    f.open('rb')
+                    f.current_chunk = 1
+                    f.offset = 2048
+                    f.file.closed = False
+                    # Set total size to 0 so we don't enter chunk read loop
+                    f.total_size = 0
+                    for c in f.chunks():
+                        pass
+        f.file.seek.assert_called_with(0)
+        self.assertEqual(f.current_chunk, 1)
+        self.assertEqual(f.offset, 0)
+        mo.assert_called_once_with(self.first_file, 'rb')
+
+    def test_chunks_seek_error(self):
+        '''Check that an AttributeError and UnsupportedOperation are handled
+           when calling seek if chunks is called when on chunk 1.'''
+        mock_os, mock_storage, chunk_dir, first_file = self._setup_mocks(True)
+        with patch('django_drf_filepond.utils.os', mock_os):
+            with patch('django_drf_filepond.utils.storage', mock_storage):
+                with patch('builtins.open', mock_open()) as mo:
+                    f = DrfFilepondChunkedUploadedFile(
+                        self.tuc, 'application/octet-stream')
+                    self.assertEqual(f.first_file, self.first_file)
+                    f.open('rb')
+                    f.current_chunk = 1
+                    f.offset = 2048
+                    f.file.closed = False
+                    # Set total size to 0 so we don't enter chunk read loop
+                    f.total_size = 0
+                    # Set offset to non-0 so we can check that the error was
+                    # raised (the call to set offset to 0 is after seek)
+                    f.offset = 10
+                    f.file.seek = Mock(side_effect=AttributeError())
+                    for c in f.chunks():
+                        pass
+                    self.assertEqual(f.offset, 10)
+                    # Now run the same check with UnsupportedOperation
+                    f.offset = 20
+                    f.file.seek = Mock(side_effect=UnsupportedOperation())
+                    for c in f.chunks():
+                        pass
+                    self.assertEqual(f.offset, 20)
+        mo.assert_called_once_with(self.first_file, 'rb')
+
+    def test_chunks_reset_to_chunk_1_if_not_on_first_chunk(self):
+        '''Check that when chunks is called and we're not on chunk 1 that the
+           offset and chunk are reset and open is called on chunk 1s file.'''
+        mock_os, mock_storage, chunk_dir, first_file = self._setup_mocks(True)
+        with patch('django_drf_filepond.utils.os', mock_os):
+            with patch('django_drf_filepond.utils.storage', mock_storage):
+                with patch('builtins.open', mock_open()) as mo:
+                    f = DrfFilepondChunkedUploadedFile(
+                        self.tuc, 'application/octet-stream')
+                    self.assertEqual(f.first_file, self.first_file)
+                    f.open('rb')
+                    f.current_chunk = 10
+                    f.offset = 2048
+                    f.file.closed = False
+                    # Set total size to 0 so we don't enter chunk read loop
+                    f.total_size = 0
+                    for c in f.chunks():
+                        pass
+        self.assertFalse(f.file.seek.called)
+        self.assertEqual(f.current_chunk, 1)
+        self.assertEqual(f.offset, 0)
+        mo.assert_called_with(self.first_file, 'rb')
+
+    def test_chunks_read_full_data_less_than_chunk_size(self):
+        '''Read some data that has a total size of less than chunk size.'''
+        raise NotImplementedError('This test is not yet implemented.')
+
+    def test_chunks_read_full_data_multiple_chunks(self):
+        '''Test reading of a set of multiple chunk "files" that are sized
+           differently to the chunk size.'''
+        raise NotImplementedError('This test is not yet implemented.')
+
+    def test_chunks_read_full_data_exact_chunk_multiple(self):
+        '''Test reading of a set of multiple chunk "files" that are each the
+           same size as the chunk size.'''
+        raise NotImplementedError('This test is not yet implemented.')
+
+    def test_chunks_read_full_data_crossing_chunks(self):
+        '''Test reading of a set of multiple chunk "files" that are sized
+           differently to the chunk size, using a read chunk size that
+           ensures we cross chunk file boundaries during some reads.'''
+        raise NotImplementedError('This test is not yet implemented.')

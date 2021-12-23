@@ -134,8 +134,15 @@ class DrfFilepondChunkedUploadedFile(UploadedFile):
                 self.seek(0)
                 self.offset = 0
             except (AttributeError, UnsupportedOperation):
-                pass
+                # This except block is the same as the one in the top-level
+                # django.core.files.base.File obejct to maintain compatibility
+                # with the top-level object, adding a debug statement instead
+                # of "pass" as in top-level to provide some feedback.
+                LOG.debug('AttributeError or UnsupportedOperation when '
+                          'trying to seek to 0')
         else:
+            # Close current file and reset data then open first file
+            self.close()
             self.current_chunk = 1
             self.offset = 0
             self.file = open(self.first_file, self.mode)
