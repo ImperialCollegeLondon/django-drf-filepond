@@ -5,18 +5,21 @@
 #  provides a file interface over a set of file chunks stored on disk.      #
 #                                                                           #
 #############################################################################
-from io import UnsupportedOperation
-from django_drf_filepond.utils import DrfFilepondChunkedUploadedFile
-from django_drf_filepond.models import TemporaryUploadChunked
 import logging
+import random
+import string
+from io import UnsupportedOperation
 
+import django_drf_filepond.drf_filepond_settings as local_settings
 from django.test.testcases import TestCase
+from django_drf_filepond.models import TemporaryUploadChunked
+from django_drf_filepond.utils import DrfFilepondChunkedUploadedFile
 
 # Python 2/3 support
 try:
-    from unittest.mock import MagicMock, Mock, patch, call, mock_open
+    from unittest.mock import MagicMock, Mock, call, mock_open, patch
 except ImportError:
-    from mock import MagicMock, Mock, patch, call, mock_open
+    from mock import MagicMock, Mock, call, mock_open, patch
 
 LOG = logging.getLogger(__name__)
 
@@ -125,6 +128,29 @@ class ChunkedUploadedFileTestCase(TestCase):
         storage = MagicMock()
         storage.base_location = self.test_file_loc
         return(os, storage, chunk_dir, self.first_file)
+
+    def _init_file_tests(self, mock_data_info, exists_val=False):
+        # Mock data info is a dict of filename: file_size for mock data
+        default_data = (
+            'ERROR: Got default data - expected filename not requested')
+        mock_data = {}
+
+        for key in mock_data_info:
+            file_size = mock_data_info[key]
+            # file_data_01 = BytesIO(os.urandom(file_size))
+            file_data = ''.join(
+                random.choices(string.ascii_lowercase +
+                               string.ascii_uppercase +
+                               string.punctuation,
+                               k=file_size))
+            mock_data[key] = file_data
+
+        def mock_open_se(fname, mode=None):
+            mo = mock_open(read_data=mock_data.get(fname, default_data))()
+            mo.closed = False
+            return mo
+
+        return mock_open_se
 
     def test_chunked_upload_first_file_missing(self):
         '''We expect a FileNotFoundError if we try to create a
@@ -391,12 +417,67 @@ class ChunkedUploadedFileTestCase(TestCase):
 
     def test_chunks_read_full_data_less_than_chunk_size(self):
         '''Read some data that has a total size of less than chunk size.'''
-        raise NotImplementedError('This test is not yet implemented.')
+        # Set up mock_open with data for this example
+        # (based on https://bugs.python.org/issue38157)
+        default_chunk_size = local_settings.TEMPFILE_READ_CHUNK_SIZE
+        file_size = default_chunk_size // 2
+        self.tuc.total_size = file_size
+        self.tuc.last_chunk = 1
+
+        mock_os, mock_storage, chunk_dir, first_file = self._setup_mocks(True)
+        mock_data_info = {first_file: file_size}
+        mock_open_se = self._init_file_tests(mock_data_info)
+
+        with patch('django_drf_filepond.utils.os', mock_os):
+            with patch('django_drf_filepond.utils.storage', mock_storage):
+                with patch('builtins.open', side_effect=mock_open_se) as mo:
+                    f = DrfFilepondChunkedUploadedFile(
+                        self.tuc, 'application/octet-stream')
+                    self.assertEqual(f.first_file, self.first_file)
+                    f.open('rb')
+                    data = ''
+                    for c in f.chunks():
+                        data += c
+                    f.close()
+        # Current chunk should be last chunk + 1
+        self.assertEqual(f.current_chunk, 2)
+        self.assertEqual(f.offset, file_size)
+        mo.assert_called_once_with(self.first_file, 'rb')
 
     def test_chunks_read_full_data_multiple_chunks(self):
         '''Test reading of a set of multiple chunk "files" that are sized
            differently to the chunk size.'''
-        raise NotImplementedError('This test is not yet implemented.')
+        default_chunk_size = local_settings.TEMPFILE_READ_CHUNK_SIZE
+        chunk_file_size = default_chunk_size // 2
+        last_file_size = chunk_file_size - 345
+        self.tuc.total_size = (chunk_file_size * 8) + last_file_size
+        self.tuc.last_chunk = 9
+
+        mock_os, mock_storage, chunk_dir, first_file = self._setup_mocks(True)
+        # Remove chunk number from first file
+        chunk_file_base = first_file[:-1]
+        mock_data_info = {}
+        for i in range(1, 10):
+            mock_data_info[chunk_file_base + str(i)] = (
+                chunk_file_size if i != 9 else last_file_size)
+
+        mock_open_se = self._init_file_tests(mock_data_info)
+
+        with patch('django_drf_filepond.utils.os', mock_os):
+            with patch('django_drf_filepond.utils.storage', mock_storage):
+                with patch('builtins.open', side_effect=mock_open_se) as mo:
+                    f = DrfFilepondChunkedUploadedFile(
+                        self.tuc, 'application/octet-stream')
+                    self.assertEqual(f.first_file, self.first_file)
+                    f.open('rb')
+                    data = ''
+                    for c in f.chunks():
+                        data += c
+                    f.close()
+        # Current chunk should be last chunk + 1
+        self.assertEqual(f.current_chunk, 10)
+        self.assertEqual(f.offset, (chunk_file_size * 8) + last_file_size)
+        mo.assert_called_once_with(self.first_file, 'rb')
 
     def test_chunks_read_full_data_exact_chunk_multiple(self):
         '''Test reading of a set of multiple chunk "files" that are each the
