@@ -124,6 +124,14 @@ LOG = logging.getLogger(__name__)
 # test_upload_chunk_upload_complete_set: Test that when the chunk being
 #    uploaded has the final block of data, upload_complete is set.
 #
+# test_upload_empty_chunk_complete: Test that a request to upload a chunk with
+#    no data, is successfully handled. When uploading a file that has a size
+#    that is an exact multiple of the upload chunk size set on the
+#    client-side, there will be a final PATCH request with no data.
+#
+# test_upload_empty_chunk_incomplete: Test that a request to upload a chunk
+#    with no data, when the upload is not complete fails with a 400 error.
+#
 # TESTS FOR _store_upload FUNCTION
 # --------------------------------
 #
@@ -477,6 +485,37 @@ class UploadersFileChunkedTestCase(TestCase):
         res = self._prep_response(res)
         mock_store_upload.assert_called_once_with(tuc)
         self.assertContains(res, self.upload_id, status_code=200)
+
+    def test_upload_empty_chunk_complete(self):
+        '''Test that a request to upload a chunk with no data, is successfully
+           handled. When uploading a file that has a size that is an exact
+           multiple of the upload chunk size set on the client-side, there
+           will be a final PATCH request with no data.'''
+        tuc = self._setup_tuc(complete=True, total_size=345644)
+        self.request.META = {'HTTP_UPLOAD_OFFSET': 345644,
+                             'HTTP_UPLOAD_LENGTH': 345644,
+                             'HTTP_UPLOAD_NAME': tuc.upload_name}
+        # When no data is available request.data is set to an empty dict
+        self.request.data = {}
+
+        res = self.uploader._handle_chunk_upload(self.request, self.upload_id)
+        res = self._prep_response(res)
+        self.assertContains(res, self.upload_id, status_code=200)
+
+    def test_upload_empty_chunk_incomplete(self):
+        '''Test that a request to upload a chunk with no data, when the upload
+           is not complete fails with a 400 error.'''
+        tuc = self._setup_tuc(complete=True, total_size=345644)
+        self.request.META = {'HTTP_UPLOAD_OFFSET': 301732,
+                             'HTTP_UPLOAD_LENGTH': 345644,
+                             'HTTP_UPLOAD_NAME': tuc.upload_name}
+        # When no data is available request.data is set to an empty dict
+        self.request.data = {}
+
+        res = self.uploader._handle_chunk_upload(self.request, self.upload_id)
+        res = self._prep_response(res)
+        self.assertContains(res, 'Upload data type not recognised.',
+                            status_code=400)
 
     # TESTS FOR _store_upload FUNCTION
     # --------------------------------
