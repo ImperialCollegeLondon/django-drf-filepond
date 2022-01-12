@@ -240,6 +240,11 @@ class FilepondChunkedFileUploader(FilepondFileUploader):
             fd = BytesIO(file_data)
         elif isinstance(file_data, text_type):
             fd = StringIO(file_data)
+        elif len(file_data) == 0:
+            # This may be a final empty request in relation to a completed
+            # upload - see issue #72 - accept the request
+            return Response(chunk_id, status=status.HTTP_200_OK,
+                            content_type='text/plain')
         else:
             return Response('Upload data type not recognised.',
                             status=status.HTTP_400_BAD_REQUEST)
