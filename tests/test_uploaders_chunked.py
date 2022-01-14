@@ -178,6 +178,7 @@ class UploadersFileChunkedTestCase(TestCase):
         self.upload_name = 'my_test_file.png'
         self.uploader = FilepondChunkedFileUploader()
         self.request = MagicMock(spec=Request)
+        self.request.META = {}
         self.request.user = AnonymousUser()
         self.request.data = ensure_text(
             'This is the test upload chunk data...')

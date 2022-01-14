@@ -232,6 +232,11 @@ class FilepondChunkedFileUploader(FilepondFileUploader):
         # the data couldn't be handled by the configured parser.
         file_data = request.data
 
+        # Get the required header information to handle the new data
+        uoffset = request.META.get('HTTP_UPLOAD_OFFSET', None)
+        ulength = request.META.get('HTTP_UPLOAD_LENGTH', None)
+        uname = request.META.get('HTTP_UPLOAD_NAME', None)
+
         if (not chunk_id) or (chunk_id == ''):
             return Response('A required chunk parameter is missing.',
                             status=status.HTTP_400_BAD_REQUEST)
@@ -240,11 +245,19 @@ class FilepondChunkedFileUploader(FilepondFileUploader):
             fd = BytesIO(file_data)
         elif isinstance(file_data, text_type):
             fd = StringIO(file_data)
-        elif len(file_data) == 0:
+        # If file_data is an invalid type and this is not iterable the
+        # next check fails so need to support this case.
+        elif hasattr(file_data, '__iter__') and len(file_data) == 0:
             # This may be a final empty request in relation to a completed
-            # upload - see issue #72 - accept the request
-            return Response(chunk_id, status=status.HTTP_200_OK,
-                            content_type='text/plain')
+            # upload - see issue #72
+            # Check the headers and accept the request if the offset is the
+            # same as the length (i.e. all file data has already been sent).
+            if uoffset and ulength and (uoffset == ulength):
+                return Response(chunk_id, status=status.HTTP_200_OK,
+                                content_type='text/plain')
+            else:
+                return Response('Upload data type not recognised.',
+                                status=status.HTTP_400_BAD_REQUEST)
         else:
             return Response('Upload data type not recognised.',
                             status=status.HTTP_400_BAD_REQUEST)
@@ -256,11 +269,7 @@ class FilepondChunkedFileUploader(FilepondFileUploader):
             return Response('Invalid chunk upload request data',
                             status=status.HTTP_400_BAD_REQUEST)
 
-        # Get the required header information to handle the new data
-        uoffset = request.META.get('HTTP_UPLOAD_OFFSET', None)
-        ulength = request.META.get('HTTP_UPLOAD_LENGTH', None)
-        uname = request.META.get('HTTP_UPLOAD_NAME', None)
-
+        # Now check that the required headers were set
         if (uoffset is None) or (ulength is None) or (uname is None):
             return Response('Chunk upload is missing required metadata',
                             status=status.HTTP_400_BAD_REQUEST)
