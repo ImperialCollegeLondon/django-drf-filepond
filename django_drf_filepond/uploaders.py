@@ -61,7 +61,7 @@ class FilepondFileUploader(object):
             upload_field_name = request.data['fp_upload_field']
 
         if upload_field_name not in request.data:
-            raise ParseError('Invalid request data has been provided.')
+            raise ParseError('Could not find upload field name in request data.')
 
         # The content of the upload field is a django.http.QueryDict.
         # The dict may have multiple values for a given field name.
