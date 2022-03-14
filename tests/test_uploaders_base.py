@@ -95,14 +95,14 @@ class UploadersBaseTestCase(TestCase):
     def test_get_file_obj_std_field_name_missing(self):
         self.request.data = _setupRequestData({'somefield': '{}'})
         with self.assertRaisesMessage(
-                ParseError, 'Invalid request data has been provided.'):
+                ParseError, 'Could not find upload_field_name in request data.'):
             FilepondFileUploader._get_file_obj(self.request)
 
     def test_get_file_obj_custom_field_name_missing(self):
         self.request.data = _setupRequestData({'fp_upload_field': 'somefield',
                                                'a_field': '{}'})
         with self.assertRaisesMessage(
-                ParseError, 'Invalid request data has been provided.'):
+                ParseError, 'Could not find upload_field_name in request data.'):
             FilepondFileUploader._get_file_obj(self.request)
 
     def test_get_uploader_patch_req(self):
