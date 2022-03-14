@@ -107,6 +107,6 @@ class UploadersFileStandardTestCase(TestCase):
         # be captured and converted into a 400 response. Here we have to
         # capture the ParseError directly to check that this is working.
         with self.assertRaisesMessage(
-                ParseError, 'Invalid request data has been provided.'):
+                ParseError, 'Could not find upload_field_name in request data.'):
             self.uploader.handle_upload(self.request, self.upload_id,
                                         self.file_id)

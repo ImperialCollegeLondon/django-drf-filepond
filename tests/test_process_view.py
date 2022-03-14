@@ -139,8 +139,8 @@ class ProcessTestCase(TestCase):
                          ' to invalid data being provided.')
         self.assertTrue('detail' in response.data,
                         'Error detail missing in response.')
-        self.assertIn(response.data['detail'], ('Invalid request data has '
-                                                'been provided.'))
+        self.assertIn(response.data['detail'], ('Could not find upload_field_name'
+                                                ' in request data.'))
 
     def test_upload_non_file_data(self):
         cf = ContentFile(self.test_data.read(), name='test.txt')
@@ -181,8 +181,8 @@ class ProcessTestCase(TestCase):
                          ' to invalid data being provided.')
         self.assertTrue('detail' in response.data,
                         'Error detail missing in response.')
-        self.assertIn(response.data['detail'], ('Invalid request data has '
-                                                'been provided.'))
+        self.assertIn(response.data['detail'], ('Could not find upload_field_name '
+                                                'in request data.'))
 
     def test_store_upload_with_storage_outside_BASE_DIR_without_enable(self):
         old_storage = views.storage
