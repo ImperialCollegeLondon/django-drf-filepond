@@ -32,6 +32,7 @@ from rest_framework.views import APIView
 from django_drf_filepond.uploaders import FilepondFileUploader
 from django_drf_filepond.utils import _get_file_id, _get_user,\
     get_local_settings_base_dir
+from django.utils.encoding import escape_uri_path
 
 LOG = logging.getLogger(__name__)
 
@@ -252,8 +253,8 @@ class LoadView(APIView):
         ct = _get_content_type(filename)
 
         response = HttpResponse(data_bytes, content_type=ct)
-        response['Content-Disposition'] = ('inline; filename=%s' %
-                                           filename)
+        response['Content-Disposition'] = ('inline; filename="%s"' %
+                                           escape_uri_path(filename))
 
         return response
 
@@ -296,8 +297,8 @@ class RestoreView(APIView):
         ct = _get_content_type(upload_file_name)
 
         response = HttpResponse(data, content_type=ct)
-        response['Content-Disposition'] = ('inline; filename=%s' %
-                                           upload_file_name)
+        response['Content-Disposition'] = ('inline; filename="%s"' %
+                                           escape_uri_path(upload_file_name))
 
         return response
 
@@ -419,8 +420,8 @@ class FetchView(APIView):
         response['Content-Type'] = content_type
         response['Content-Length'] = file_size
         response['X-Content-Transfer-Id'] = upload_id
-        response['Content-Disposition'] = ('inline; filename=%s' %
-                                           upload_file_name)
+        response['Content-Disposition'] = ('inline; filename="%s"' %
+                                           escape_uri_path(upload_file_name))
         return response
 
     def get(self, request):
@@ -432,6 +433,6 @@ class FetchView(APIView):
         else:
             raise ValueError('process_request result is of an unexpected type')
         response = HttpResponse(buf.getvalue(), content_type=content_type)
-        response['Content-Disposition'] = ('inline; filename=%s' %
-                                           upload_file_name)
+        response['Content-Disposition'] = ('inline; filename="%s"' %
+                                           escape_uri_path(upload_file_name))
         return response
