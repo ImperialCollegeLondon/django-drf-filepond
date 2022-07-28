@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 import importlib
 import logging
 import mimetypes
+import time
 
 import django_drf_filepond.drf_filepond_settings as local_settings
 import os
@@ -239,8 +240,12 @@ class LoadView(APIView):
             return Response('Not found', status=status.HTTP_404_NOT_FOUND)
 
         # su is now the StoredUpload record for the requested file
+        original_download = request.META.get('HTTP_GETORIGINAL', False)
+        print(f"should get original {original_download}: {request.META}")
         try:
-            (filename, data_bytes) = get_stored_upload_file_data(su)
+            start_time = time.time()
+            (filename, data_bytes) = get_stored_upload_file_data(su, original_download)
+            print(f"elapsed time: {time.time() - start_time}")
         except ConfigurationError as e:
             LOG.error('Error getting file upload: [%s]' % str(e))
             return HttpResponseServerError('The file upload settings are '
@@ -270,6 +275,7 @@ class RestoreView(APIView):
                             status=status.HTTP_400_BAD_REQUEST)
 
         upload_id = request.GET[LOAD_RESTORE_PARAM_NAME]
+
 
         upload_id_fmt = re.compile('^([%s]){22}$' %
                                    (shortuuid.get_alphabet()))

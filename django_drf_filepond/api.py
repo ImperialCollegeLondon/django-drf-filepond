@@ -18,6 +18,9 @@ import shortuuid
 from django_drf_filepond.models import TemporaryUpload, StoredUpload
 from django_drf_filepond.storage_utils import _get_storage_backend
 from django_drf_filepond.exceptions import ConfigurationError
+from easy_thumbnails.files import get_thumbnailer, Thumbnailer
+import io
+from sorl.thumbnail import get_thumbnail
 
 # TODO: Need to refactor this into a class and put the initialisation of
 # the storage backend into the init.
@@ -247,7 +250,7 @@ def get_stored_upload(upload_id):
     return su
 
 
-def get_stored_upload_file_data(stored_upload):
+def get_stored_upload_file_data(stored_upload, original_download):
     """
     Given a StoredUpload object, this function gets and returns the data of
     the file associated with the StoredUpload instance.
@@ -295,7 +298,6 @@ def get_stored_upload_file_data(stored_upload):
             raise FileNotFoundError(
                 'File [%s] for upload_id [%s] not found on remote file '
                 'store.' % (file_path, stored_upload.upload_id))
-        file_data = stored_upload.file.read()
     else:
         if ((not os.path.exists(file_path)) or
                 (not os.path.isfile(file_path))):
@@ -305,10 +307,23 @@ def get_stored_upload_file_data(stored_upload):
                                     % file_path)
 
         # We now know that the file exists locally and is not a directory
-        file_data = stored_upload.file.read()
 
+    # why easy-thumbnail is not ok:
+    # requires knowledge about extension to cache file value and filepond is not aware of file extension
+    # thumbnailed = Thumbnailer(file=stored_upload.file, name=stored_upload.upload_id).get_thumbnail({'size': (150, 150), 'crop': False}).image
+    # img_byte_arr = io.BytesIO()
+    # thumbnailed.save(img_byte_arr, format=thumbnailed.format)
+    # img_byte_arr = img_byte_arr.getvalue()
     filename = os.path.basename(stored_upload.file.name)
-    return (filename, file_data)
+    if original_download:
+        return (filename, stored_upload.file.read())
+    else:
+        thumbnailed_solr = get_thumbnail(stored_upload.file, '150x150')
+
+
+        # return (filename, img_byte_arr)
+        return (filename, thumbnailed_solr.read())
+        
 
 
 def delete_stored_upload(upload_id, delete_file=False):

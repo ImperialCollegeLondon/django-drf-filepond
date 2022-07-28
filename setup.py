@@ -31,7 +31,9 @@ setup(
         "requests>=2.20.1",
         "django-storages==1.9.1;python_version=='2.7'",
         "django-storages>=1.9.1;python_version>='3.5'",
-        "six>=1.14.0"
+        "six>=1.14.0",
+        "easy-thumbnails==2.8.1",
+        "sorl-thumbnail==12.8.0",
     ],
     tests_require=[
         "nose",
