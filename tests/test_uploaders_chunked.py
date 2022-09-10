@@ -527,8 +527,10 @@ class UploadersFileChunkedTestCase(TestCase):
                              '<%s>' % self.upload_id)):
             self.uploader._store_upload(tuc)
 
+    # Test a case where the second upload chunk is missing.
+    # We need to mock things so that the attempt to open the
+    # first chunk works successfully...
     def test_store_upload_chunk_missing(self):
-        # Test a case where the second upload chunk is missing.
         tuc = self._setup_tuc(True)
         tuc.last_chunk = 3
         tuc.save()
@@ -541,15 +543,20 @@ class UploadersFileChunkedTestCase(TestCase):
             return True
 
         def mock_open_se(chunk_file, _):
-            return BytesIO((os.path.basename(chunk_file) + '_*...*_').encode())
+            data = BytesIO((os.path.basename(chunk_file) + '_*...*_').encode())
+            setattr(data, 'mode', None)
+            return data
 
         with patch('os.path.exists', side_effect=mock_path_exists_se):
             open_name = '%s.open' % django_drf_filepond.uploaders.__name__
+            utils_open_name = '%s.open' % django_drf_filepond.utils.__name__
             with patch(open_name, side_effect=mock_open_se):
-                with self.assertRaisesMessage(
-                        FileNotFoundError,
-                        'Chunk file not found for chunk <2>'):
-                    self.uploader._store_upload(tuc)
+                with patch(utils_open_name, side_effect=mock_open_se):
+                    with patch('os.path.getsize', return_value=6):
+                        with self.assertRaisesMessage(
+                                FileNotFoundError,
+                                'Chunk file not found for chunk <2>'):
+                            self.uploader._store_upload(tuc)
 
     # We patch TemporaryUpload.save so that it doesn't try to save a file to
     # disk but also so that it doesn't call os.path.exists as part of the save
@@ -581,13 +588,15 @@ class UploadersFileChunkedTestCase(TestCase):
 
         with patch('os.path.exists', side_effect=mock_path_exists_se):
             open_name = '%s.open' % django_drf_filepond.uploaders.__name__
+            utils_open_name = '%s.open' % django_drf_filepond.utils.__name__
             with patch(open_name, side_effect=mock_open_se):
-                with patch('django_drf_filepond.models.TemporaryUpload'):
-                    with patch('os.path.getsize', return_value=128000):
-                        with self.assertRaisesMessage(
-                                ValueError,
-                                'Stored file size wrong or file not found.'):
-                            self.uploader._store_upload(tuc)
+                with patch(utils_open_name, side_effect=mock_open_se):
+                    with patch('django_drf_filepond.models.TemporaryUpload'):
+                        with patch('os.path.getsize', return_value=128000):
+                            with self.assertRaisesMessage(
+                                    ValueError,
+                                    'Stored file size wrong or file not found.'):
+                                self.uploader._store_upload(tuc)
 
     # See comment on test_store_upload_stored_file_wrong_size re this patch
     @patch('django_drf_filepond.models.TemporaryUpload.save')
@@ -616,7 +625,9 @@ class UploadersFileChunkedTestCase(TestCase):
 
         with patch('os.path.exists', side_effect=mock_path_exists_se):
             open_name = '%s.open' % django_drf_filepond.uploaders.__name__
+            utils_open_name = '%s.open' % django_drf_filepond.utils.__name__
             with patch(open_name, side_effect=mock_open_se):
+                with patch(utils_open_name, side_effect=mock_open_se):
                     with patch('os.path.getsize', return_value=tuc.total_size):
                         # This shouldn't be required if the error is raised
                         # but in case it isn't, this handles os.remove calls
@@ -624,7 +635,7 @@ class UploadersFileChunkedTestCase(TestCase):
                         with patch('os.remove'):
                             with self.assertRaisesMessage(
                                     ValueError, ('Stored file size wrong or '
-                                                 'file not found.')):
+                                                'file not found.')):
                                 self.uploader._store_upload(tuc)
 
     # See comment for test_store_upload_stored_file_wrong_size re this patch
@@ -655,7 +666,9 @@ class UploadersFileChunkedTestCase(TestCase):
 
         with patch('os.path.exists', side_effect=mock_path_exists_se):
             open_name = '%s.open' % django_drf_filepond.uploaders.__name__
+            utils_open_name = '%s.open' % django_drf_filepond.utils.__name__
             with patch(open_name, side_effect=mock_open_se):
+                with patch(utils_open_name, side_effect=mock_open_se):
                     with patch('os.path.getsize', return_value=tuc.total_size):
                         with patch('os.remove') as mock_rm:
                             self.uploader._store_upload(tuc)

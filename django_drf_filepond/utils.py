@@ -58,12 +58,12 @@ def _process_base_dir(base_dir):
 
 # A custom "django.core.files.uploadedfile.UploadedFile" object that picks
 # up the chunked files stored separately on disk for a chunked upload.
-# At present, these are "reconstituted" into a BytesIO object and then
-# passed to an InMemoryUploadedFile object, however, this results in using
+# Previously, these were "reconstituted" into a BytesIO object and then
+# passed to an InMemoryUploadedFile object, however, this resulted in using
 # double the memory of the size of the stored upload which has been causing
 # issues for users handling large uploads (see issue #64 - https://github.com
 # /ImperialCollegeLondon/django-drf-filepond/issues/64). This uploadded
-# file obejct addresses this issue by loading the required chunk data in
+# file object addresses this issue by loading the required chunk data in
 # on demand.
 # To be able to process the chunks we need the chunk directory, the file_id
 # (the filename prefix used for all chunk files), and the number of chunks.
@@ -93,6 +93,16 @@ class DrfFilepondChunkedUploadedFile(UploadedFile):
             self.chunk_dir, '%s_1' % (self.chunk_base))
         if not os.path.exists(self.first_file):
             raise FileNotFoundError('Initial chunk for this file not found.')
+
+        # Check that the chunk files for all the other chunks exist
+        # before the object can be created...
+        for i in range(2, self.num_chunks+1):
+            chunk_file = os.path.join(self.chunk_dir,
+                                      '%s_%s' % (self.chunk_base, i))
+            if not os.path.exists(chunk_file):
+                raise FileNotFoundError(
+                    'Chunk file not found for chunk <%s>' % (i))
+
         self.chunk_size = os.path.getsize(self.first_file)
 
         self.offset = 0
