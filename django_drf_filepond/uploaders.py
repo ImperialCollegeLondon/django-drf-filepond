@@ -174,6 +174,9 @@ class FilepondChunkedFileUploader(FilepondFileUploader):
                 return Response('Invalid ID for handling upload.',
                                 status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             return self._handle_new_chunk_upload(request, upload_id, file_id)
+        else:
+            return Response('Invalid method.',
+                            status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
     def _handle_new_chunk_upload(self, request, upload_id, file_id):
         LOG.debug('Processing a new chunked upload request...')

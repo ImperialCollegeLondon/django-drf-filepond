@@ -52,6 +52,9 @@ LOG = logging.getLogger(__name__)
 # test_valid_post_req_handled: Test that a valid POST request is handled
 #    correctly and results in calling _handle_new_chunk_upload
 #
+# test_invalid_method_error: Test that a call to handle_upload with an invalid
+#    method returns a 405 - method not supported - error.
+#
 #
 # TESTS FOR _handle_new_chunk_upload FUNCTION
 # -------------------------------------------
@@ -245,6 +248,16 @@ class UploadersFileChunkedTestCase(TestCase):
         self.uploader.handle_upload(self.request, self.upload_id, self.file_id)
         mock_hncu.assert_called_with(self.request, self.upload_id,
                                      self.file_id)
+
+    def test_invalid_method_error(self):
+        '''Test that a call to handle_upload with an invalid method
+           returns a 405 - method not supported - error.'''
+        self.request.method = 'DELETE'
+        self.request.data = _setupRequestData({'filepond': '{}'})
+        r = self.uploader.handle_upload(self.request, self.upload_id,
+                                        self.file_id)
+        r = self._prep_response(r)
+        self.assertContains(r, 'Invalid method.', status_code=405)
 
     # TESTS FOR _handle_new_chunk_upload FUNCTION
     # -------------------------------------------
