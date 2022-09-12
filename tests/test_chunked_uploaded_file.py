@@ -5,11 +5,10 @@
 #  provides a file interface over a set of file chunks stored on disk.      #
 #                                                                           #
 #############################################################################
+import django_drf_filepond
 from django_drf_filepond.exceptions import ChunkedUploadError
 import logging
 import os
-import random
-import string
 from io import BytesIO, UnsupportedOperation
 
 import django_drf_filepond.drf_filepond_settings as local_settings
@@ -55,8 +54,9 @@ LOG = logging.getLogger(__name__)
 #     open on the file object if first_file (the pointer to the first chunk
 #     file) is not specified.
 #
-# test_file_open_first_file_not_exists_error: Test that we can't
-#     successfully call open on the file if first_file doesn't exist
+# test_obj_first_file_not_exists_error: Test that we can't successfully
+#     create a DrfFilepondChunkedUploadedFile object if the first file doesn't
+#     exist
 #
 # test_file_open_chunk_and_offset_reset: Test that the chunk and offset are
 #     correctly reset to 1 and 0 repsectively and open uses first chunk.
@@ -154,7 +154,7 @@ class ChunkedUploadedFileTestCase(TestCase):
         os.path.getsize = Mock(return_value=65536)
         storage = MagicMock()
         storage.base_location = self.test_file_loc
-        return(os, storage, chunk_dir, self.first_file)
+        return (os, storage, chunk_dir, self.first_file)
 
     def _init_file_tests(self, mock_data_info, exists_val=False):
         # Mock data info is a dict of filename: file_size for mock data
@@ -167,11 +167,6 @@ class ChunkedUploadedFileTestCase(TestCase):
             file_size = mock_data_info[key]
             file_data = os.urandom(file_size)
             full_data += file_data
-            # file_data = ''.join(
-            #     random.choices(string.ascii_lowercase +
-            #                    string.ascii_uppercase +
-            #                    string.punctuation,
-            #                    k=file_size))
             mock_data[key] = file_data
 
         def mock_open_se(fname, mode=None):
@@ -219,7 +214,7 @@ class ChunkedUploadedFileTestCase(TestCase):
         '''Check that we get an AttributeError if the directory
            for the chunk files is missing.'''
         mock_os, mock_storage, chunk_dir, first_file = self._setup_mocks(
-            [True, False])
+            [True, True, True, True, False])
         with patch('django_drf_filepond.utils.os', mock_os):
             with patch('django_drf_filepond.utils.storage', mock_storage):
                 f = DrfFilepondChunkedUploadedFile(
@@ -232,7 +227,14 @@ class ChunkedUploadedFileTestCase(TestCase):
     def test_file_size_not_accessible(self):
         '''Check that we get an attribute error if the getsize call
            fails on one of the file chunks.'''
-        mock_os, mock_storage, chunk_dir, first_file = self._setup_mocks(True)
+        chunk_dir = self.test_file_loc + '/' + self.tuc.upload_dir
+        chunk_file_base = chunk_dir + '/' + self.tuc.file_id + '_'
+
+        join_list = self._get_chunk_join_list(chunk_dir, self.tuc.last_chunk,
+                                              chunk_file_base=chunk_file_base)
+
+        mock_os, mock_storage, chunk_dir, first_file = self._setup_mocks(
+            True, join_list=join_list)
         # There's a getsize call in the class init and then we let one succeed
         # in the size calculation look and the second will generate an OSError
         mock_os.path.getsize = Mock(
@@ -249,7 +251,17 @@ class ChunkedUploadedFileTestCase(TestCase):
     def test_file_size_valid_files(self):
         '''Check that we can correctly calculate the size of a set of
            (mocked) file chunks.'''
-        mock_os, mock_storage, chunk_dir, first_file = self._setup_mocks(True)
+        chunk_dir = self.test_file_loc + '/' + self.tuc.upload_dir
+        chunk_file_base = chunk_dir + '/' + self.tuc.file_id + '_'
+
+        join_list = self._get_chunk_join_list(chunk_dir, self.tuc.last_chunk,
+                                              chunk_file_base=chunk_file_base)
+        join_list += [chunk_file_base+str(i) for i in range(
+            1, self.tuc.last_chunk + 1)]
+
+        mock_os, mock_storage, chunk_dir, first_file = self._setup_mocks(
+            True, join_list=join_list)
+
         # There's a getsize call in the class init - set a different value for
         # this to avoid interference with the final calculated value.
         mock_os.path.getsize = Mock(
@@ -305,19 +317,19 @@ class ChunkedUploadedFileTestCase(TestCase):
                         ValueError, 'The file cannot be reopened.'):
                     f.open('rb')
 
-    def test_file_open_first_file_not_exists_error(self):
-        '''Test that we can't successfully call open on the file if
-           first_file doesn't exist'''
+    def test_obj_first_file_not_exists_error(self):
+        '''Test that we can't successfully create a
+           DrfFilepondChunkedUploadedFile object if the first file
+           doesn't exit.'''
         mock_os, mock_storage, chunk_dir, first_file = self._setup_mocks(
-            [True, False])
+            [False])
         with patch('django_drf_filepond.utils.os', mock_os):
             with patch('django_drf_filepond.utils.storage', mock_storage):
-                f = DrfFilepondChunkedUploadedFile(
-                    self.tuc, 'application/octet-stream')
-                self.assertEqual(f.first_file, self.first_file)
                 with self.assertRaisesRegex(
-                        ValueError, 'The file cannot be reopened.'):
-                    f.open('rb')
+                        FileNotFoundError,
+                        'Initial chunk for this file not found.'):
+                    DrfFilepondChunkedUploadedFile(
+                        self.tuc, 'application/octet-stream')
 
     def test_file_open_chunk_and_offset_reset(self):
         '''Test that the chunk and offset are correctly reset to 1 and 0
@@ -383,8 +395,8 @@ class ChunkedUploadedFileTestCase(TestCase):
         chunk_dir = self.test_file_loc + '/' + self.tuc.upload_dir
         chunk_file_base = chunk_dir + '/' + self.tuc.file_id + '_'
 
-        join_list = [chunk_dir] + [
-            chunk_file_base+str(i) for i in range(1, self.tuc.last_chunk + 1)]
+        join_list = self._get_chunk_join_list(chunk_dir, self.tuc.last_chunk,
+                                              chunk_file_base=chunk_file_base)
 
         mock_data_info = {}
         for i in range(1, num_chunks + 1):
@@ -537,8 +549,8 @@ class ChunkedUploadedFileTestCase(TestCase):
         chunk_dir = self.test_file_loc + '/' + self.tuc.upload_dir
         first_file = chunk_dir + '/' + self.tuc.file_id + '_1'
 
-        join_list = [chunk_dir] + [
-            first_file[:-1]+str(i) for i in range(1, self.tuc.last_chunk + 1)]
+        join_list = self._get_chunk_join_list(chunk_dir, self.tuc.last_chunk,
+                                              first_file=first_file)
 
         (f, mo, _, _, _) = self._run_chunked_file_test(
             join_list, chunk_file_size, self.tuc.last_chunk, last_file_size)
@@ -547,8 +559,8 @@ class ChunkedUploadedFileTestCase(TestCase):
         # that is sized such that it doesn't end exactly on a chunk boundary
         self.assertEqual(f.current_chunk, 10)
         self.assertEqual(f.offset, (chunk_file_size * 8) + last_file_size)
-        mo.assert_has_calls([
-            call(file_item, 'rb') for file_item in join_list[1:]])
+        mo.assert_has_calls([call(file_item, 'rb') for file_item in join_list[
+            1:self.tuc.last_chunk]])
 
     def test_chunks_read_full_data_exact_chunk_multiple(self):
         '''Test reading of a set of multiple chunk "files" that are each the
@@ -561,8 +573,8 @@ class ChunkedUploadedFileTestCase(TestCase):
         chunk_dir = self.test_file_loc + '/' + self.tuc.upload_dir
         first_file = chunk_dir + '/' + self.tuc.file_id + '_1'
 
-        join_list = [chunk_dir] + [
-            first_file[:-1]+str(i) for i in range(1, self.tuc.last_chunk + 1)]
+        join_list = self._get_chunk_join_list(chunk_dir, self.tuc.last_chunk,
+                                              first_file=first_file)
 
         (f, mo, _, _, _) = self._run_chunked_file_test(
             join_list, chunk_file_size, self.tuc.last_chunk, last_file_size)
@@ -576,8 +588,8 @@ class ChunkedUploadedFileTestCase(TestCase):
         # current_chunk should equal the total number of chunks.
         self.assertEqual(f.current_chunk, 11)
         self.assertEqual(f.offset, (chunk_file_size * 11))
-        mo.assert_has_calls([
-            call(file_item, 'rb') for file_item in join_list[1:]])
+        mo.assert_has_calls([call(file_item, 'rb') for file_item in join_list[
+            1:self.tuc.last_chunk]])
 
     def test_chunks_read_full_data_crossing_chunks(self):
         '''Test reading of a set of multiple chunk "files" that are sized
@@ -596,8 +608,8 @@ class ChunkedUploadedFileTestCase(TestCase):
         chunk_dir = self.test_file_loc + '/' + self.tuc.upload_dir
         chunk_file_base = chunk_dir + '/' + self.tuc.file_id + '_'
 
-        join_list = [chunk_dir] + [
-            chunk_file_base+str(i) for i in range(1, self.tuc.last_chunk + 1)]
+        join_list = self._get_chunk_join_list(chunk_dir, self.tuc.last_chunk,
+                                              chunk_file_base=chunk_file_base)
 
         (f, mo, iterations, data, full_data) = self._run_chunked_file_test(
             join_list, file_size, num_chunks, last_file_size, read_chunk_size)
@@ -605,8 +617,8 @@ class ChunkedUploadedFileTestCase(TestCase):
         # Current chunk should be last chunk + 1
         self.assertEqual(f.current_chunk, num_chunks+1)
         self.assertEqual(f.offset, total_size)
-        mo.assert_has_calls([
-            call(file_item, 'rb') for file_item in join_list[1:]])
+        mo.assert_has_calls([call(file_item, 'rb') for file_item in join_list[
+            1:self.tuc.last_chunk]])
         # Check that the number of read iterations is based on the
         # read_chunk_size and that the data read matches the original
         self.assertEqual(iterations, 100)
@@ -626,7 +638,7 @@ class ChunkedUploadedFileTestCase(TestCase):
            upload is an exact multiple of the chunk size being used for
            uploads on the client side, the final chunk will be empty. Test
            that this is handled correctly.'''
-        
+
         # In reality, this situation shouldn't, in fact, occur. While the
         # filepond client does send an empty PATCH request at the end of
         # a set of chunks when the upload is an exact multiple of the
@@ -645,8 +657,8 @@ class ChunkedUploadedFileTestCase(TestCase):
         chunk_dir = self.test_file_loc + '/' + self.tuc.upload_dir
         chunk_file_base = chunk_dir + '/' + self.tuc.file_id + '_'
 
-        join_list = [chunk_dir] + [
-            chunk_file_base+str(i) for i in range(1, self.tuc.last_chunk + 1)]
+        join_list = self._get_chunk_join_list(chunk_dir, self.tuc.last_chunk,
+                                              chunk_file_base=chunk_file_base)
 
         (f, mo, iterations, data, full_data) = self._run_chunked_file_test(
             join_list, chunk_file_size, self.tuc.last_chunk, last_file_size)
@@ -655,8 +667,8 @@ class ChunkedUploadedFileTestCase(TestCase):
         # file read is complete on the boundary of a chunk file.
         self.assertEqual(f.current_chunk, self.tuc.last_chunk - 1)
         self.assertEqual(f.offset, self.tuc.total_size)
-        mo.assert_has_calls([
-            call(file_item, 'rb') for file_item in join_list[1:-1]])
+        mo.assert_has_calls([call(file_item, 'rb') for file_item in join_list[
+            1:self.tuc.last_chunk]])
         # Check that the number of read iterations is based on the
         # read_chunk_size and that the data read matches the original
         self.assertEqual(iterations, self.tuc.total_size // chunk_file_size)
@@ -683,8 +695,8 @@ class ChunkedUploadedFileTestCase(TestCase):
         chunk_dir = self.test_file_loc + '/' + self.tuc.upload_dir
         chunk_file_base = chunk_dir + '/' + self.tuc.file_id + '_'
 
-        join_list = [chunk_dir] + [
-            chunk_file_base+str(i) for i in range(1, self.tuc.last_chunk + 1)]
+        join_list = self._get_chunk_join_list(chunk_dir, self.tuc.last_chunk,
+                                              chunk_file_base=chunk_file_base)
 
         with self.assertRaisesRegex(
                 ChunkedUploadError,
@@ -705,8 +717,8 @@ class ChunkedUploadedFileTestCase(TestCase):
         chunk_dir = self.test_file_loc + '/' + self.tuc.upload_dir
         chunk_file_base = chunk_dir + '/' + self.tuc.file_id + '_'
 
-        join_list = [chunk_dir] + [
-            chunk_file_base+str(i) for i in range(1, self.tuc.last_chunk + 1)]
+        join_list = self._get_chunk_join_list(chunk_dir, self.tuc.last_chunk,
+                                              chunk_file_base=chunk_file_base)
 
         mock_os, mock_storage, chunk_dir, first_file = self._setup_mocks(
             True, join_list=join_list)
@@ -722,7 +734,7 @@ class ChunkedUploadedFileTestCase(TestCase):
 
         with patch('django_drf_filepond.utils.os', mock_os):
             with patch('django_drf_filepond.utils.storage', mock_storage):
-                with patch('builtins.open', side_effect=mock_open_se) as mo:
+                with patch('builtins.open', side_effect=mock_open_se):
                     f = DrfFilepondChunkedUploadedFile(
                         self.tuc, 'application/octet-stream')
                     self.assertEqual(f.first_file, self.first_file)
@@ -757,8 +769,19 @@ class ChunkedUploadedFileTestCase(TestCase):
         chunk_dir = self.test_file_loc + '/' + self.tuc.upload_dir
         chunk_file_base = chunk_dir + '/' + self.tuc.file_id + '_'
 
+        # This includes the chunk_dir for the initial os.path.join
+        # call at utils.py:85, then we make another join call
+        # at utils.py:92 to get the path to the first chunk file.
+        # There's now an additional pre-check that all files are present
+        # so that we don't start building the file and then subsequently
+        # find a chunk is missing -utils.py:99-104. Finally we have stored
+        # the path to the first file already but we again calculate the
+        # paths to the other files in utils.py:192 which is why we add
+        # paths 2 to n here again.
         join_list = [chunk_dir] + [
-            chunk_file_base+str(i) for i in range(1, self.tuc.last_chunk + 1)]
+            chunk_file_base+str(i) for i in range(1, self.tuc.last_chunk + 1)
+        ] + [
+            chunk_file_base+str(i) for i in range(2, self.tuc.last_chunk + 1)]
 
         mock_data_info = {}
         for i in range(1, num_chunks + 1):
@@ -771,7 +794,10 @@ class ChunkedUploadedFileTestCase(TestCase):
 
         with patch('django_drf_filepond.utils.os', mock_os):
             with patch('django_drf_filepond.utils.storage', mock_storage):
-                with patch('builtins.open', side_effect=mock_open_se):
+                utils_open_name = ('%s.open'
+                                   % django_drf_filepond.utils.__name__)
+                with patch(utils_open_name, side_effect=mock_open_se):
+                    # with patch('builtins.open', side_effect=mock_open_se):
                     f = DrfFilepondChunkedUploadedFile(
                         self.tuc, 'application/octet-stream')
                     self.assertEqual(f.first_file, self.first_file)
@@ -823,3 +849,30 @@ class ChunkedUploadedFileTestCase(TestCase):
                     f.close()
 
         return (f, mo, iterations, data, full_data)
+
+    ###
+    # Prepare the list of file paths to be returned by the mocked
+    # os.path.join calls in various tests.
+    def _get_chunk_join_list(self, chunk_dir, last_chunk,
+                             first_file=None, chunk_file_base=None):
+        # This includes the chunk_dir for the initial os.path.join
+        # call at utils.py:85, then we make another join call
+        # at utils.py:92 to get the path to the first chunk file.
+        # There's now an additional pre-check that all files are present
+        # so that we don't start building the file and then subsequently
+        # find a chunk is missing -utils.py:99-104. Finally we have stored
+        # the path to the first file already but we again calculate the
+        # paths to the other files in utils.py:192 which is why we add
+        # paths 2 to n here again.
+        if chunk_file_base:
+            join_list = [chunk_dir] + [chunk_file_base+str(i) for i in range(
+                1, self.tuc.last_chunk + 1)] + [
+                    chunk_file_base+str(i) for i in range(
+                        2, self.tuc.last_chunk + 1)]
+        elif first_file:
+            join_list = [chunk_dir] + [first_file[:-1]+str(i) for i in range(
+                1, self.tuc.last_chunk + 1)] + [
+                    first_file[:-1]+str(i) for i in range(
+                        2, self.tuc.last_chunk + 1)]
+
+        return join_list
