@@ -9,7 +9,7 @@ import django_drf_filepond.drf_filepond_settings as local_settings
 import cgi
 import os
 import shutil
-import django_drf_filepond
+import django_drf_filepond.api
 
 LOG = logging.getLogger(__name__)
 

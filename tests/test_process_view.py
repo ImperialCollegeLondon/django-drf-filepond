@@ -1,4 +1,4 @@
-from django_drf_filepond.models import TemporaryUploadChunked
+from django_drf_filepond.models import TemporaryUpload, TemporaryUploadChunked
 from io import BytesIO
 import logging
 import os
@@ -17,7 +17,7 @@ from six import ensure_text
 from django_drf_filepond import drf_filepond_settings
 import django_drf_filepond
 import django_drf_filepond.views as views
-from tests.utils import remove_file_upload_dir_if_required
+from tests.utils import prep_response, remove_file_upload_dir_if_required
 
 
 # Python 2/3 support
@@ -220,6 +220,9 @@ class ProcessTestCase(TestCase):
         views.storage = old_storage
         drf_filepond_settings.UPLOAD_TMP = old_UPLOAD_TMP
         drf_filepond_settings.ALLOW_EXTERNAL_UPLOAD_DIR = False
+        # Remove the TemporaryUpload object to remove the file created on
+        # disk by this test.
+        TemporaryUpload.objects.get(upload_id=response.data).delete()
         self.assertEqual(response.status_code, 200, 'Expecting upload to be '
                          'successful.')
 
