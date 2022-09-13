@@ -32,7 +32,7 @@ class PlainTextParser(BaseParser):
 # upload support. A chunk upload request has a content type of
 # application/offset+octet-stream. For now we simply get the raw request data
 # and return it.
-# TODO: This could alse extract metadata from the request, such as chunk
+# TODO: This could also extract metadata from the request, such as chunk
 #       length, name and offset and return an object containing the data and
 #       the metadata. For now the metadata is extracted and checked prior to
 #       accessing the uploaded data.
