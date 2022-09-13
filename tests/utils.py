@@ -1,4 +1,5 @@
 # Some util functions for django-drf-filepond tests
+from django_drf_filepond.renderers import PlainTextRenderer
 import logging
 import os
 from django.http.request import QueryDict
@@ -32,3 +33,15 @@ def _setupRequestData(value_dict):
         else:
             qd.update({key: val})
     return qd
+
+
+# Since we're working with mocked requests and getting responses that
+# haven't been processed via a DRF/Django view, the response won't render
+# correctly without having some additional parameters set. Using
+# assertContains requires that the request has these parameters set so
+# this helper function is used to avoid repetition.
+def prep_response(response):
+    response.accepted_renderer = PlainTextRenderer()
+    response.accepted_media_type = 'text/plain'
+    response.renderer_context = {}
+    return response
