@@ -22,6 +22,12 @@ from django_drf_filepond.utils import DrfFilepondChunkedUploadedFile
 # mock) here since this is defined as a dependency in setup.py anyway.
 from mock import MagicMock, Mock, call, mock_open, patch
 
+# There's no built in FileNotFoundError in Python 2
+try:
+    FileNotFoundError
+except NameError:
+    FileNotFoundError = IOError
+
 LOG = logging.getLogger(__name__)
 
 
@@ -163,7 +169,14 @@ class ChunkedUploadedFileTestCase(TestCase):
         mock_data = {}
         full_data = b''
 
-        for key in mock_data_info:
+        # The ordering of keys seems to be sorted in py3.6+ whereas
+        # in 2.7/3.5 it isn't meaning that the full_data byte array is
+        # generated in a different order to the way it's returned
+        # via mock_open_se. To work around this, we sort the dict keys
+        # in advance.
+        mdi_keys = list(mock_data_info.keys())
+        mdi_keys.sort()
+        for key in mdi_keys:
             file_size = mock_data_info[key]
             file_data = os.urandom(file_size)
             full_data += file_data
@@ -298,9 +311,12 @@ class ChunkedUploadedFileTestCase(TestCase):
             with patch('django_drf_filepond.utils.storage', mock_storage):
                 f = DrfFilepondChunkedUploadedFile(
                     self.tuc, 'application/octet-stream')
+                # Python 3 and 2.7 return different TypeError strings...
                 with self.assertRaisesRegex(
-                    TypeError, (r'open\(\) missing 1 required positional '
-                                'argument: \'mode\'')):
+                        TypeError,
+                        (r'(open\(\) missing 1 required positional '
+                         r'argument: \'mode\')|(open\(\) takes exactly'
+                         r' 2 arguments \(1 given\))')):
                     f.open()
 
     def test_file_open_no_first_file_error(self):
@@ -337,7 +353,10 @@ class ChunkedUploadedFileTestCase(TestCase):
         mock_os, mock_storage, chunk_dir, first_file = self._setup_mocks(True)
         with patch('django_drf_filepond.utils.os', mock_os):
             with patch('django_drf_filepond.utils.storage', mock_storage):
-                with patch('builtins.open', mock_open()) as mo:
+                utils_open_name = ('%s.open'
+                                   % django_drf_filepond.utils.__name__)
+                # with patch('builtins.open', mock_open()) as mo:
+                with patch(utils_open_name, mock_open()) as mo:
                     f = DrfFilepondChunkedUploadedFile(
                         self.tuc, 'application/octet-stream')
                     f.current_chunk = 12
@@ -354,7 +373,10 @@ class ChunkedUploadedFileTestCase(TestCase):
         mock_os, mock_storage, chunk_dir, first_file = self._setup_mocks(True)
         with patch('django_drf_filepond.utils.os', mock_os):
             with patch('django_drf_filepond.utils.storage', mock_storage):
-                with patch('builtins.open', mock_open()) as mo:
+                utils_open_name = ('%s.open'
+                                   % django_drf_filepond.utils.__name__)
+                # with patch('builtins.open', mock_open()) as mo:
+                with patch(utils_open_name, mock_open()) as mo:
                     f = DrfFilepondChunkedUploadedFile(
                         self.tuc, 'application/octet-stream')
                     self.assertEqual(f.first_file, self.first_file)
@@ -409,7 +431,10 @@ class ChunkedUploadedFileTestCase(TestCase):
 
         with patch('django_drf_filepond.utils.os', mock_os):
             with patch('django_drf_filepond.utils.storage', mock_storage):
-                with patch('builtins.open', side_effect=mock_open_se):
+                utils_open_name = ('%s.open'
+                                   % django_drf_filepond.utils.__name__)
+                # with patch('builtins.open', side_effect=mock_open_se):
+                with patch(utils_open_name, side_effect=mock_open_se):
                     f = DrfFilepondChunkedUploadedFile(
                         self.tuc, 'application/octet-stream')
                     self.assertEqual(f.first_file, self.first_file)
@@ -436,7 +461,10 @@ class ChunkedUploadedFileTestCase(TestCase):
         mock_os, mock_storage, chunk_dir, first_file = self._setup_mocks(True)
         with patch('django_drf_filepond.utils.os', mock_os):
             with patch('django_drf_filepond.utils.storage', mock_storage):
-                with patch('builtins.open', mock_open()) as mo:
+                utils_open_name = ('%s.open'
+                                   % django_drf_filepond.utils.__name__)
+                # with patch('builtins.open', mock_open()) as mo:
+                with patch(utils_open_name, mock_open()) as mo:
                     f = DrfFilepondChunkedUploadedFile(
                         self.tuc, 'application/octet-stream')
                     self.assertEqual(f.first_file, self.first_file)
@@ -459,7 +487,10 @@ class ChunkedUploadedFileTestCase(TestCase):
         mock_os, mock_storage, chunk_dir, first_file = self._setup_mocks(True)
         with patch('django_drf_filepond.utils.os', mock_os):
             with patch('django_drf_filepond.utils.storage', mock_storage):
-                with patch('builtins.open', mock_open()) as mo:
+                utils_open_name = ('%s.open'
+                                   % django_drf_filepond.utils.__name__)
+                # with patch('builtins.open', mock_open()) as mo:
+                with patch(utils_open_name, mock_open()) as mo:
                     f = DrfFilepondChunkedUploadedFile(
                         self.tuc, 'application/octet-stream')
                     self.assertEqual(f.first_file, self.first_file)
@@ -490,7 +521,10 @@ class ChunkedUploadedFileTestCase(TestCase):
         mock_os, mock_storage, chunk_dir, first_file = self._setup_mocks(True)
         with patch('django_drf_filepond.utils.os', mock_os):
             with patch('django_drf_filepond.utils.storage', mock_storage):
-                with patch('builtins.open', mock_open()) as mo:
+                utils_open_name = ('%s.open'
+                                   % django_drf_filepond.utils.__name__)
+                # with patch('builtins.open', mock_open()) as mo:
+                with patch(utils_open_name, mock_open()) as mo:
                     f = DrfFilepondChunkedUploadedFile(
                         self.tuc, 'application/octet-stream')
                     self.assertEqual(f.first_file, self.first_file)
@@ -522,7 +556,10 @@ class ChunkedUploadedFileTestCase(TestCase):
 
         with patch('django_drf_filepond.utils.os', mock_os):
             with patch('django_drf_filepond.utils.storage', mock_storage):
-                with patch('builtins.open', side_effect=mock_open_se) as mo:
+                utils_open_name = ('%s.open'
+                                   % django_drf_filepond.utils.__name__)
+                # with patch('builtins.open', side_effect=mock_open_se) as mo:
+                with patch(utils_open_name, side_effect=mock_open_se) as mo:
                     f = DrfFilepondChunkedUploadedFile(
                         self.tuc, 'application/octet-stream')
                     self.assertEqual(f.first_file, self.first_file)
@@ -734,7 +771,10 @@ class ChunkedUploadedFileTestCase(TestCase):
 
         with patch('django_drf_filepond.utils.os', mock_os):
             with patch('django_drf_filepond.utils.storage', mock_storage):
-                with patch('builtins.open', side_effect=mock_open_se):
+                utils_open_name = ('%s.open'
+                                   % django_drf_filepond.utils.__name__)
+                # with patch('builtins.open', side_effect=mock_open_se):
+                with patch(utils_open_name, side_effect=mock_open_se):
                     f = DrfFilepondChunkedUploadedFile(
                         self.tuc, 'application/octet-stream')
                     self.assertEqual(f.first_file, self.first_file)
@@ -796,8 +836,8 @@ class ChunkedUploadedFileTestCase(TestCase):
             with patch('django_drf_filepond.utils.storage', mock_storage):
                 utils_open_name = ('%s.open'
                                    % django_drf_filepond.utils.__name__)
+                # with patch('builtins.open', side_effect=mock_open_se):
                 with patch(utils_open_name, side_effect=mock_open_se):
-                    # with patch('builtins.open', side_effect=mock_open_se):
                     f = DrfFilepondChunkedUploadedFile(
                         self.tuc, 'application/octet-stream')
                     self.assertEqual(f.first_file, self.first_file)
@@ -832,7 +872,10 @@ class ChunkedUploadedFileTestCase(TestCase):
 
         with patch('django_drf_filepond.utils.os', mock_os):
             with patch('django_drf_filepond.utils.storage', mock_storage):
-                with patch('builtins.open', side_effect=mock_open_se) as mo:
+                utils_open_name = ('%s.open'
+                                   % django_drf_filepond.utils.__name__)
+                # with patch('builtins.open', side_effect=mock_open_se) as mo:
+                with patch(utils_open_name, side_effect=mock_open_se) as mo:
                     f = DrfFilepondChunkedUploadedFile(
                         self.tuc, 'application/octet-stream')
                     self.assertEqual(f.first_file, self.first_file)

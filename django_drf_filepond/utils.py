@@ -32,6 +32,13 @@ def _get_file_id():
     return six.ensure_text(file_id)
 
 
+# There's no built in FileNotFoundError in Python 2
+try:
+    FileNotFoundError
+except NameError:
+    FileNotFoundError = IOError
+
+
 # Get the BASE_DIR variable from local_settings and process it to ensure that
 # it can be used in django_drf_filepond across Python 2.7, 3.5 and 3.6+.
 # Need to take into account that this may be a regular string or a

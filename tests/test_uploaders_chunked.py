@@ -134,6 +134,14 @@ LOG = logging.getLogger(__name__)
 # test_upload_empty_chunk_incomplete: Test that a request to upload a chunk
 #    with no data, when the upload is not complete fails with a 400 error.
 #
+# test_store_upload_file_error_captured: Test that when _store_upload is
+#    called within handle_chunk_upload, if a FileNotFoundError is raised
+#    then this is captured a 500 error is returned.
+#
+# test_store_upload_value_error_captured: Test that when _store_upload is
+#    called within handle_chunk_upload, if a ValueError is raised then
+#    this is captured a 500 error is returned.
+#
 # TESTS FOR _store_upload FUNCTION
 # --------------------------------
 #
@@ -518,6 +526,56 @@ class UploadersFileChunkedTestCase(TestCase):
         res = prep_response(res)
         self.assertContains(res, 'Upload data type not recognised.',
                             status_code=400)
+
+    @patch('django_drf_filepond.models.FilePondUploadSystemStorage.save')
+    @patch('django_drf_filepond.uploaders.FilepondChunkedFileUploader.'
+           '_store_upload')
+    def test_store_upload_file_error_captured(self, mock_store_upload, _):
+        ''' Test that when _store_upload is called within handle_chunk_upload,
+            if a FileNotFoundError is raised then this is captured a 500 error
+            is returned.'''
+        tuc = self._setup_tuc(complete=True, total_size=1048576)
+        self.request.META = {'HTTP_UPLOAD_OFFSET': 150000,
+                             'HTTP_UPLOAD_LENGTH': 1048576,
+                             'HTTP_UPLOAD_NAME': tuc.upload_name}
+        self.request.data = str('This upload is complete...')
+
+        mock_store_upload.side_effect = FileNotFoundError(
+            'The file could not be found during store of upload.')
+
+        with patch('os.path.exists', return_value=True):
+            res = self.uploader._handle_chunk_upload(self.request,
+                                                     self.upload_id)
+
+        mock_store_upload.assert_called_once_with(tuc)
+        res = prep_response(res)
+        self.assertContains(res, 'Error storing uploaded file.',
+                            status_code=500)
+
+    @patch('django_drf_filepond.models.FilePondUploadSystemStorage.save')
+    @patch('django_drf_filepond.uploaders.FilepondChunkedFileUploader.'
+           '_store_upload')
+    def test_store_upload_value_error_captured(self, mock_store_upload, _):
+        ''' Test that when _store_upload is called within handle_chunk_upload,
+            if a ValueError is raised then this is captured a 500 error is
+            returned.'''
+        tuc = self._setup_tuc(complete=True, total_size=1048576)
+        self.request.META = {'HTTP_UPLOAD_OFFSET': 150000,
+                             'HTTP_UPLOAD_LENGTH': 1048576,
+                             'HTTP_UPLOAD_NAME': tuc.upload_name}
+        self.request.data = str('This upload is complete...')
+
+        mock_store_upload.side_effect = ValueError(
+            'ValueError when storing file.')
+
+        with patch('os.path.exists', return_value=True):
+            res = self.uploader._handle_chunk_upload(self.request,
+                                                     self.upload_id)
+
+        mock_store_upload.assert_called_once_with(tuc)
+        res = prep_response(res)
+        self.assertContains(res, 'Error storing uploaded file.',
+                            status_code=500)
 
     # TESTS FOR _store_upload FUNCTION
     # --------------------------------
