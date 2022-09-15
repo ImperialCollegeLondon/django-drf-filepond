@@ -103,7 +103,10 @@ class RevertTestCase(TestCase):
                             status_code=404)
 
     def test_revert_no_delete_dir(self):
+        # Store the DELETE_UPLOAD_TMP_DIRS value and re-set it at end of test.
+        old_del_tmp_dirs = local_settings.DELETE_UPLOAD_TMP_DIRS
         local_settings.DELETE_UPLOAD_TMP_DIRS = False
+        
         # Check that our record is in the database
         tu = TemporaryUpload.objects.get(upload_id=self.upload_id)
 
@@ -123,6 +126,7 @@ class RevertTestCase(TestCase):
                          'The test file wasn\'t removed.')
         self.assertTrue(os.path.exists(os.path.dirname(file_path)),
                         'The test file temp dir was unexpectedly removed.')
+        local_settings.DELETE_UPLOAD_TMP_DIRS = old_del_tmp_dirs
 
     def test_revert_delete_byte_data(self):
         upload_id = self.upload_id

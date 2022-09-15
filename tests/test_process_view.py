@@ -1,4 +1,4 @@
-from django_drf_filepond.models import TemporaryUploadChunked
+from django_drf_filepond.models import TemporaryUpload, TemporaryUploadChunked
 from io import BytesIO
 import logging
 import os
@@ -14,10 +14,10 @@ from rest_framework import status
 from rest_framework.response import Response
 from six import ensure_text
 
-from django_drf_filepond import drf_filepond_settings, uploaders
+from django_drf_filepond import drf_filepond_settings
 import django_drf_filepond
 import django_drf_filepond.views as views
-from tests.utils import remove_file_upload_dir_if_required
+from tests.utils import prep_response, remove_file_upload_dir_if_required
 
 
 # Python 2/3 support
@@ -100,7 +100,7 @@ class ProcessTestCase(TestCase):
         (encoded_form, content_type) = self._get_encoded_form('testfile.dat')
 
         req = self.rf.post(reverse('process'),
-                      data=encoded_form, content_type=content_type)
+                           data=encoded_form, content_type=content_type)
         pv = views.ProcessView.as_view()
         response = pv(req)
 
@@ -115,7 +115,7 @@ class ProcessTestCase(TestCase):
         (encoded_form, content_type) = self._get_encoded_form('testfile.dat')
 
         req = self.rf.post(reverse('process'),
-                      data=encoded_form, content_type=content_type)
+                           data=encoded_form, content_type=content_type)
         pv = views.ProcessView.as_view()
         response = pv(req)
         views.storage = old_storage
@@ -132,7 +132,7 @@ class ProcessTestCase(TestCase):
                        SimpleUploadedFile('test.txt', self.test_data.read())}
         enc_form = encode_multipart('abc', upload_form)
         req = self.rf.post(reverse('process'), data=enc_form,
-                      content_type='multipart/form-data; boundary=abc')
+                           content_type='multipart/form-data; boundary=abc')
         pv = views.ProcessView.as_view()
         response = pv(req)
         self.assertEqual(response.status_code, 400, 'Expecting 400 error due'
@@ -147,7 +147,7 @@ class ProcessTestCase(TestCase):
         upload_form = {'filepond': cf}
         enc_form = encode_multipart('abc', upload_form)
         req = self.rf.post(reverse('process'), data=enc_form,
-                      content_type='multipart/form-data; boundary=abc')
+                           content_type='multipart/form-data; boundary=abc')
         req.FILES['filepond'] = cf
         pv = views.ProcessView.as_view()
         response = pv(req)
@@ -173,8 +173,8 @@ class ProcessTestCase(TestCase):
         enc_form = encode_multipart(boundary, upload_form)
 
         req = self.rf.post(reverse('process'), data=enc_form,
-                      content_type='multipart/form-data; boundary=%s'
-                      % boundary)
+                           content_type='multipart/form-data; boundary=%s'
+                           % boundary)
         pv = views.ProcessView.as_view()
         response = pv(req)
         self.assertEqual(response.status_code, 400, 'Expecting 400 error due'
@@ -190,7 +190,7 @@ class ProcessTestCase(TestCase):
         (encoded_form, content_type) = self._get_encoded_form('testfile.dat')
 
         req = self.rf.post(reverse('process'),
-                      data=encoded_form, content_type=content_type)
+                           data=encoded_form, content_type=content_type)
         pv = views.ProcessView.as_view()
         response = pv(req)
         views.storage = old_storage
@@ -214,12 +214,15 @@ class ProcessTestCase(TestCase):
         (encoded_form, content_type) = self._get_encoded_form('testfile.dat')
 
         req = self.rf.post(reverse('process'),
-                      data=encoded_form, content_type=content_type)
+                           data=encoded_form, content_type=content_type)
         pv = views.ProcessView.as_view()
         response = pv(req)
         views.storage = old_storage
         drf_filepond_settings.UPLOAD_TMP = old_UPLOAD_TMP
         drf_filepond_settings.ALLOW_EXTERNAL_UPLOAD_DIR = False
+        # Remove the TemporaryUpload object to remove the file created on
+        # disk by this test.
+        TemporaryUpload.objects.get(upload_id=response.data).delete()
         self.assertEqual(response.status_code, 200, 'Expecting upload to be '
                          'successful.')
 
@@ -232,7 +235,7 @@ class ProcessTestCase(TestCase):
         (encoded_form, content_type) = self._get_encoded_form('testfile.dat')
 
         req = self.rf.post(reverse('process'),
-                      data=encoded_form, content_type=content_type)
+                           data=encoded_form, content_type=content_type)
         pv = views.ProcessView.as_view()
         response = pv(req)
 

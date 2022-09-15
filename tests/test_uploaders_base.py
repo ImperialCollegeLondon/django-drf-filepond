@@ -39,6 +39,10 @@ LOG = logging.getLogger(__name__)
 #    when we try to access a file from a request where the specfied custom
 #    field name is missing in the request.
 #
+# test_get_file_obj_custom_field_multiple_entries_error: Test that a Parse
+#    Error is generated when we are passed data that includes more than two
+#    values for the custom field name - we can only accept one or two items.
+#
 # test_get_uploader_patch_req: Test that a PATCH request results in a
 #    FilepondChunkedFileUploader being returned.
 #
@@ -50,6 +54,9 @@ LOG = logging.getLogger(__name__)
 #
 # test_get_uploader_post_req_chunk: Test that a chunked upload POST request
 #    results in a FilepondChunkedFileUploader being returned.
+#
+# test_handle_upload_invalid_method_error: Test that a call to handle_upload
+#    with an invalid method returns a 405 - method not supported - error.
 #
 # test_get_uploader_get_req: Test that a get request results in an exception
 #    since no uploader type currently supports get requests.
@@ -103,6 +110,14 @@ class UploadersBaseTestCase(TestCase):
                                                'a_field': '{}'})
         with self.assertRaisesMessage(
                 ParseError, 'Could not find upload_field_name in request data.'):
+            FilepondFileUploader._get_file_obj(self.request)
+
+    def test_get_file_obj_custom_field_multiple_entries_error(self):
+        self.request.data = _setupRequestData(
+            {'fp_upload_field': 'somefield',
+             'somefield': ['{}', '{some data}', 'some other data']})
+        with self.assertRaisesMessage(
+                ParseError, 'Invalid number of fields in request data.'):
             FilepondFileUploader._get_file_obj(self.request)
 
     def test_get_uploader_patch_req(self):
