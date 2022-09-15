@@ -139,12 +139,9 @@ class FetchTestCase(TestCase):
                      status=200,
                      body=connection_error_callback)
 
-        response = self.client.get((reverse('fetch') +
-                                    ('?target=%s' % test_url)))
-        self.assertContains(
-            response,
-            'Unable to access the requested remote file headers',
-            status_code=500)
+        with self.assertRaises(requests.exceptions.ConnectionError):
+            requests.get('http://localhost' + (reverse('fetch') +
+                         ('?target=%s' % test_url)))
 
     @httpretty.activate
     def test_fetch_file_notfound_error(self):

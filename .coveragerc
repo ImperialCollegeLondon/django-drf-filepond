@@ -2,6 +2,7 @@
 omit = 
     django_drf_filepond/__init__.py
     django_drf_filepond/apps.py
+    django_drf_filepond/migrations/*
 
 [report]
 show_missing = True
