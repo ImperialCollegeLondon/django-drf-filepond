@@ -18,12 +18,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [2.7, 3.5, 3.6, 3.7, 3.8, 3.9]
+        python-version: [2.7, 3.5, 3.6, 3.7, 3.8, 3.9, 3.10]
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
     - name: Install dependencies
@@ -32,7 +32,7 @@ jobs:
         python -m pip install flake8
         # Also upgrade setuptools to resolve issue with "no module named setuptools_rust" error on 2.7/3.6
         python -m pip install --upgrade setuptools
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        python -m pip install tox
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
@@ -40,6 +40,9 @@ jobs:
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         # Aim to reduce complexity to 10 but leave at 16 for now to support existing code
         flake8 django_drf_filepond --count --exit-zero --max-complexity=16 --max-line-length=80 --statistics
-    - name: Test with nose
+    - name: Test with tox/pytest
       run: |
-        python setup.py test
+        # We use the default "py" environment since this will use the version
+        # of Python installed in the runner which will be the version from the
+        # matrix for this task.
+        tox -e py
