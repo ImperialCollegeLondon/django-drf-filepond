@@ -1,7 +1,15 @@
 # This workflow will install Python dependencies, run tests and lint with a variety of Python versions
 # For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
-
-name: test
+#
+# The pipeline generates coverage data for each Python version that
+# the tests are run against and then uploads this data as artifacts.
+# The coverage step then pulls down this data combines it and generates
+# the coverage report.
+# See https://nedbatchelder.com/blog/202209/making_a_coverage_badge.html or
+# or https://hynek.me/articles/ditch-codecov-python/ for examples of 
+# similar approaches to generating and combining coverage data on which
+# this file is based.
+name: "Run tests"
 
 on:
   push:
@@ -12,7 +20,7 @@ on:
     types: [created, edited, published]
 
 jobs:
-  build:
+  tests:
 
     runs-on: ubuntu-latest
     strategy:
@@ -46,3 +54,40 @@ jobs:
         # of Python installed in the runner which will be the version from the
         # matrix for this task.
         tox -e py
+    - name: Upload coverage data
+      uses: actions/upload-artifact@v3
+      with:
+        name: coverage-data
+        path: .coverage.*
+        retention-days: 1
+
+  # Once the tests have been run on the different Python versions and
+  # the coverage data files uploaded as artifacts, we can now pull
+  # down the coverage data from the various jobs that may have run in 
+  # parallel and we can combine the data to get a final coverage value.
+  # We then generate a badge which is stored to the repo for display in
+  # the main README.
+  coverage:
+    name: "Code coverage"
+    needs: tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.8"
+      
+      - name: "Install dependencies"
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install tox
+      
+      - name: "Download coverage data"
+        uses: actions/download-artifact@v3
+        with:
+          name: coverage-data
+      
+      - name: "Combine coverage data and show report"
+        run: |
+          tox -e coverage
