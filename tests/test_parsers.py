@@ -21,10 +21,11 @@ class ParsersTestCase(TestCase):
            uploaded file chunks. For now this is just a placeholder that
            returns the input data unchanged. This test simply checks that
            the UploadChunkParser returns the input data unchanged.'''
+        parser = UploadChunkParser()
         randbytes = os.urandom(256)
         stream = BytesIO(randbytes)
         stream.seek(0)
-        randbytes2 = stream.read()
+        randbytes2 = parser.parse(stream)
         self.assertEqual(randbytes, randbytes2)
 
     def test_upload_chunk_parser_media_type(self):
