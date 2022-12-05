@@ -48,10 +48,11 @@ coverage.xml
 # PyBuilder
 target/
 
-# Eclipse/PyDev project files
+# Eclipse/PyDev/VSCode project files
 .project
 .pydevproject
 .settings
+.vscode
 
 # Sphinx documentation files
 docs/_build/
