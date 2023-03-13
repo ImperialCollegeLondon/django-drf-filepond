@@ -12,7 +12,6 @@ import os
 
 from django.test import TestCase
 from django.utils import timezone
-from django.core.files.base import File as DjangoFile
 
 from django_drf_filepond.api import get_stored_upload, \
     get_stored_upload_file_data

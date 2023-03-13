@@ -3,6 +3,7 @@ from io import BytesIO
 from django_drf_filepond.parsers import UploadChunkParser
 from django.test.testcases import TestCase
 
+
 #########################################################################
 # Test any custom parsers within parsers.py
 #
@@ -14,6 +15,7 @@ from django.test.testcases import TestCase
 # test_upload_chunk_parser_media_type: Check the UploadChunkParser is
 #    setup with the correct media type: 'application/offset+octet-stream'
 #
+
 class ParsersTestCase(TestCase):
 
     def test_upload_chunk_parser(self):

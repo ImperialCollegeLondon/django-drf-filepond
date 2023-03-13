@@ -106,7 +106,7 @@ class RevertTestCase(TestCase):
         # Store the DELETE_UPLOAD_TMP_DIRS value and re-set it at end of test.
         old_del_tmp_dirs = local_settings.DELETE_UPLOAD_TMP_DIRS
         local_settings.DELETE_UPLOAD_TMP_DIRS = False
-        
+
         # Check that our record is in the database
         tu = TemporaryUpload.objects.get(upload_id=self.upload_id)
 

@@ -96,8 +96,7 @@ class LoadTestCase(TestCase):
 
         # Now set up a stored version of this upload
         su = StoredUpload(upload_id=self.upload_id,
-                          file=('%s'
-                                     % (self.fn)),
+                          file=('%s' % (self.fn)),
                           uploaded=tu.uploaded)
         su.save()
 

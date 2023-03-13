@@ -216,8 +216,8 @@ class ChunkedUploadedFileTestCase(TestCase):
         with patch('django_drf_filepond.utils.os', mock_os):
             with patch('django_drf_filepond.utils.storage', mock_storage):
                 with self.assertRaisesRegex(
-                    OSError, ('File must be opened with "open\(mode\)" before '
-                              'attempting to read data')):
+                    OSError, (r'File must be opened with "open\(mode\)" '
+                              r'before attempting to read data')):
                     f = DrfFilepondChunkedUploadedFile(
                         self.tuc, 'application/octet-stream')
                     for chunk in f.chunks():
