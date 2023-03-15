@@ -217,14 +217,14 @@ class ApiDeleteTestCase(TestCase):
         local_settings.STORAGES_BACKEND = None
         self.api.storage_backend_initialised = False
         with patch('os.path.exists') as exists:
-                with patch('os.path.isdir') as isdir:
-                    exists.return_value = False
-                    isdir.return_value = True
-                    with self.assertRaisesMessage(
-                            ConfigurationError,
-                            ('The file upload settings are not configured '
-                             'correctly.')):
-                        self.delete_upload(self.upload_id, delete_file=True)
+            with patch('os.path.isdir') as isdir:
+                exists.return_value = False
+                isdir.return_value = True
+                with self.assertRaisesMessage(
+                        ConfigurationError,
+                        ('The file upload settings are not configured '
+                         'correctly.')):
+                    self.delete_upload(self.upload_id, delete_file=True)
 
     def test_delete_stored_upload_local_not_isdir(self):
         # Need to set storage backend to None and make it reinitialise to
@@ -232,14 +232,14 @@ class ApiDeleteTestCase(TestCase):
         local_settings.STORAGES_BACKEND = None
         self.api.storage_backend_initialised = False
         with patch('os.path.exists') as exists:
-                with patch('os.path.isdir') as isdir:
-                    exists.return_value = True
-                    isdir.return_value = False
-                    with self.assertRaisesMessage(
-                            ConfigurationError,
-                            ('The file upload settings are not configured '
-                             'correctly.')):
-                        self.delete_upload(self.upload_id, delete_file=True)
+            with patch('os.path.isdir') as isdir:
+                exists.return_value = True
+                isdir.return_value = False
+                with self.assertRaisesMessage(
+                        ConfigurationError,
+                        ('The file upload settings are not configured '
+                         'correctly.')):
+                    self.delete_upload(self.upload_id, delete_file=True)
 
     def test_delete_stored_upload_remote_file_missing(self):
         self.mock_storage_backend.exists.return_value = False

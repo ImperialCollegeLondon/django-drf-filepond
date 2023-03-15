@@ -17,7 +17,7 @@ from six import ensure_text
 from django_drf_filepond import drf_filepond_settings
 import django_drf_filepond
 import django_drf_filepond.views as views
-from tests.utils import prep_response, remove_file_upload_dir_if_required
+from tests.utils import remove_file_upload_dir_if_required
 
 
 # Python 2/3 support
@@ -139,8 +139,9 @@ class ProcessTestCase(TestCase):
                          ' to invalid data being provided.')
         self.assertTrue('detail' in response.data,
                         'Error detail missing in response.')
-        self.assertIn(response.data['detail'], ('Could not find upload_field_name'
-                                                ' in request data.'))
+        self.assertIn(response.data['detail'], ('Could not find '
+                                                'upload_field_name in '
+                                                'request data.'))
 
     def test_upload_non_file_data(self):
         cf = ContentFile(self.test_data.read(), name='test.txt')
@@ -181,8 +182,9 @@ class ProcessTestCase(TestCase):
                          ' to invalid data being provided.')
         self.assertTrue('detail' in response.data,
                         'Error detail missing in response.')
-        self.assertIn(response.data['detail'], ('Could not find upload_field_name '
-                                                'in request data.'))
+        self.assertIn(response.data['detail'], ('Could not find '
+                                                'upload_field_name in request '
+                                                'data.'))
 
     def test_store_upload_with_storage_outside_BASE_DIR_without_enable(self):
         old_storage = views.storage

@@ -653,8 +653,8 @@ class UploadersFileChunkedTestCase(TestCase):
                     with patch('django_drf_filepond.models.TemporaryUpload'):
                         with patch('os.path.getsize', return_value=128000):
                             with self.assertRaisesMessage(
-                                    ValueError,
-                                    'Stored file size wrong or file not found.'):
+                                    ValueError, 'Stored file size wrong or '
+                                    'file not found.'):
                                 self.uploader._store_upload(tuc)
 
     # See comment on test_store_upload_stored_file_wrong_size re this patch
@@ -694,7 +694,7 @@ class UploadersFileChunkedTestCase(TestCase):
                         with patch('os.remove'):
                             with self.assertRaisesMessage(
                                     ValueError, ('Stored file size wrong or '
-                                                'file not found.')):
+                                                 'file not found.')):
                                 self.uploader._store_upload(tuc)
 
     # See comment for test_store_upload_stored_file_wrong_size re this patch
@@ -779,4 +779,3 @@ class UploadersFileChunkedTestCase(TestCase):
                       'Upload-Offset header is missing from response')
         self.assertEqual(int(res['Upload-Offset']), tuc.offset,
                          'Upload-Offset in response doesn\'t match tuc obj.')
-
