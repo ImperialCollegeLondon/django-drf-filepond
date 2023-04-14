@@ -1,14 +1,16 @@
 import logging
-
-from django.test.testcases import TestCase
-from django_drf_filepond.utils import _get_file_id
-from django_drf_filepond.models import TemporaryUpload
-from django.core.files.uploadedfile import SimpleUploadedFile
-from django.urls import reverse
-from django.conf import settings
-import django_drf_filepond.drf_filepond_settings as drf_fp_settings
-import cgi
 import os
+# Switched to using Message rather than cgi.parse_header for parsing and
+# checking header params since cgi is deprecated and will be removed in py3.13
+from email.message import Message
+
+import django_drf_filepond.drf_filepond_settings as drf_fp_settings
+from django.conf import settings
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test.testcases import TestCase
+from django.urls import reverse
+from django_drf_filepond.models import TemporaryUpload
+from django_drf_filepond.utils import _get_file_id
 
 LOG = logging.getLogger(__name__)
 
@@ -111,10 +113,13 @@ class RestoreTestCase(TestCase):
         self.assertTrue('Content-Disposition' in response,
                         ('Response does not contain a required '
                          'Content-Disposition header.'))
-        cdisp = cgi.parse_header(response['Content-Disposition'])
-        self.assertTrue('filename' in cdisp[1], ('Content-Disposition'
-                        ' header doesn\'t contain filename parameter'))
-        fname = cdisp[1]['filename']
+
+        msg = Message()
+        msg['content-type'] = response['Content-Disposition']
+        self.assertTrue(
+            msg.get_param('filename'),
+            'Content-Disposition header doesn\'t contain filename parameter')
+        fname = msg.get_param('filename')
         self.assertEqual(
             self.fn, fname, ('Returned filename is not equal to the '
                              'provided filename value.'))
