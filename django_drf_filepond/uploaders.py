@@ -1,5 +1,6 @@
 import logging
 import os
+import time
 
 from django.core.files.uploadedfile import UploadedFile
 from rest_framework import status
@@ -269,8 +270,18 @@ class FilepondChunkedFileUploader(FilepondFileUploader):
         try:
             tuc = TemporaryUploadChunked.objects.get(upload_id=chunk_id)
         except TemporaryUploadChunked.DoesNotExist:
-            return Response('Invalid chunk upload request data',
-                            status=status.HTTP_400_BAD_REQUEST)
+            # If this is was a rather big file with many chunks, the putting
+            # the chunks together might take longer than the client's timeout
+            # allows and it will restart the last chunk. Hence we check here
+            # whether we now have a correct temporary upload with the correct id
+            # and return success in that case
+            temp_objects = TemporaryUpload.objects.filter(upload_id=chunk_id)
+            if len(temp_objects):
+                return Response(chunk_id, status=status.HTTP_200_OK,
+                                content_type='text/plain')
+            else:
+                return Response('Invalid chunk upload request data',
+                                status=status.HTTP_400_BAD_REQUEST)
 
         # Now check that the required headers were set
         if (uoffset is None) or (ulength is None) or (uname is None):
@@ -298,11 +309,22 @@ class FilepondChunkedFileUploader(FilepondFileUploader):
         # Check that our recorded offset matches the offset provided by the
         # client...if not, there's an error.
         if not (int(uoffset) == tuc.offset):
-            LOG.error('Offset provided by client <%s> doesn\'t match the '
-                      'stored offset <%s> for chunked upload id <%s>'
-                      % (uoffset, tuc.offset, chunk_id))
-            return Response('ERROR: Chunked upload metadata is invalid.',
-                            status=status.HTTP_400_BAD_REQUEST)
+            # We might get here, because ther server is still busy putting
+            # the chunks together and the client tries to reupload because
+            # of a timeout.
+            if tuc.upload_complete:
+                LOG.debug('Client is trying to reupload last chunk because '
+                          ' we are busy creating the resulting file from chunks.')
+                time.sleep(100)
+                return Response('ERROR: Still busy creating resulting file from chunks.'
+                                ' Please retry later.',
+                                status=status.HTTP_408_REQUEST_TIMEOUT)
+            else:
+                LOG.error('Offset provided by client <%s> doesn\'t match the '
+                          'stored offset <%s> for chunked upload id <%s>'
+                          % (uoffset, tuc.offset, chunk_id))
+                return Response('ERROR: Chunked upload metadata is invalid.',
+                                status=status.HTTP_400_BAD_REQUEST)
 
         file_data_len = len(file_data)
         LOG.debug('Got data from request with length %s bytes'
