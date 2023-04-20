@@ -335,12 +335,12 @@ class ApiTestCase(TestCase):
 
     def test_store_upload_local_copy_to_store_fails(self):
         tu = TemporaryUpload.objects.get(upload_id=self.upload_id)
-        with patch('shutil.copy2') as copy2_patch:
+        with patch('shutil.move') as move_patch:
             with patch('os.path.exists') as exists_patch:
                 with patch('os.path.isdir') as isdir_patch:
                     exists_patch.side_effect = [True, False, True]
                     isdir_patch.return_value = True
-                    copy2_patch.side_effect = IOError(
+                    move_patch.side_effect = IOError(
                         'Error moving temporary file to permanent storage '
                         'location')
                     with self.assertRaisesMessage(

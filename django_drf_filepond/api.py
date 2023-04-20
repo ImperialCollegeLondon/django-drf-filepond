@@ -164,7 +164,7 @@ def _store_upload_local(destination_file_path, destination_file_name,
     try:
         if not os.path.exists(target_dir):
             os.makedirs(target_dir)
-        shutil.copy2(temp_upload.get_file_path(), target_file_path)
+        shutil.move(temp_upload.get_file_path(), target_file_path)
         su.save()
         temp_upload.delete()
     except IOError as e:
