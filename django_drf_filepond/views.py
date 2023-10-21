@@ -16,6 +16,7 @@ from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.core.validators import URLValidator
 from django.http.response import HttpResponse, HttpResponseNotFound, \
     HttpResponseServerError
+from django.utils.encoding import escape_uri_path
 from django_drf_filepond.api import get_stored_upload, \
     get_stored_upload_file_data
 from django_drf_filepond.exceptions import ConfigurationError
@@ -29,6 +30,7 @@ from rest_framework.exceptions import ParseError, NotFound
 from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
 from django_drf_filepond.uploaders import FilepondFileUploader
 from django_drf_filepond.utils import _get_file_id, _get_user,\
     get_local_settings_base_dir
@@ -252,8 +254,8 @@ class LoadView(APIView):
         ct = _get_content_type(filename)
 
         response = HttpResponse(data_bytes, content_type=ct)
-        response['Content-Disposition'] = ('inline; filename=%s' %
-                                           filename)
+        response['Content-Disposition'] = ('inline; filename="%s"' %
+                                           escape_uri_path(filename))
 
         return response
 
@@ -296,8 +298,8 @@ class RestoreView(APIView):
         ct = _get_content_type(upload_file_name)
 
         response = HttpResponse(data, content_type=ct)
-        response['Content-Disposition'] = ('inline; filename=%s' %
-                                           upload_file_name)
+        response['Content-Disposition'] = ('inline; filename="%s"' %
+                                           escape_uri_path(upload_file_name))
 
         return response
 
@@ -419,8 +421,8 @@ class FetchView(APIView):
         response['Content-Type'] = content_type
         response['Content-Length'] = file_size
         response['X-Content-Transfer-Id'] = upload_id
-        response['Content-Disposition'] = ('inline; filename=%s' %
-                                           upload_file_name)
+        response['Content-Disposition'] = ('inline; filename="%s"' %
+                                           escape_uri_path(upload_file_name))
         return response
 
     def get(self, request):
@@ -432,6 +434,6 @@ class FetchView(APIView):
         else:
             raise ValueError('process_request result is of an unexpected type')
         response = HttpResponse(buf.getvalue(), content_type=content_type)
-        response['Content-Disposition'] = ('inline; filename=%s' %
-                                           upload_file_name)
+        response['Content-Disposition'] = ('inline; filename="%s"' %
+                                           escape_uri_path(upload_file_name))
         return response
