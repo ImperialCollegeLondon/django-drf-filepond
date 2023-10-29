@@ -1,6 +1,7 @@
 import logging
 import os
 import shutil
+import urllib
 # Switched to using Message rather than cgi.parse_header for parsing and
 # checking header params since cgi is deprecated and will be removed in py3.13
 from email.message import Message
@@ -47,6 +48,10 @@ LOG = logging.getLogger(__name__)
 # test_load_filename_successful_request: Make a GET request to the load
 #     endpoint with a filename. The request is successful.
 #
+# test_load_filename_non_ascii_successful_request: Test for correct handling of
+#     a GET request to the load endpoint with a filename that contains
+#     non-ascii characters.
+#
 # test_load_ambiguous_id_file: Make a GET request to the load endpoint
 #     a 22-character ID in the URL query string that is a file name.
 class LoadTestCase(TestCase):
@@ -62,10 +67,22 @@ class LoadTestCase(TestCase):
 
         msg = Message()
         msg['content-type'] = response['Content-Disposition']
-        self.assertTrue(
-            msg.get_param('filename'),
-            'Content-Disposition header doesn\'t contain filename parameter')
         fname = msg.get_param('filename')
+        self.assertTrue(
+            fname,
+            'Content-Disposition header doesn\'t contain filename parameter')
+
+        # If fname is a tuple then we're handling an encoded filename - this
+        # should be UTF-8 encoded. the Message library applies a latin-1
+        # decoding to the filename which we don't want so we need to reverse
+        # this before comparing the filename.
+        if type(fname) is tuple:
+            self.assertTrue(
+                fname[0].lower() == 'utf-8',
+                'Handling an encoded filename and expected UTF-8 encoding')
+            fname = urllib.parse.quote(fname[2], encoding='latin-1')
+            # Now UTF-8 decode to get the original filename for comparison!
+            fname = urllib.parse.unquote(fname, encoding='utf-8')
 
         self.assertEqual(filename, fname, ('Returned filename is not '
                          'equal to the provided filename value.'))
@@ -164,6 +181,35 @@ class LoadTestCase(TestCase):
 
         response = self.client.get((reverse('load') + '?id=%s' % self.fn))
         self._check_file_response(response, self.fn, self.file_content)
+
+    def test_load_filename_non_ascii_successful_request(self):
+        upload_id = _get_file_id()
+        file_id = _get_file_id()
+        file_content = ('This is some test file data for an uploaded file '
+                        'with a filename that contains non-ASCII characters.')
+        fn = 'тест.txt'
+        uploaded_file = SimpleUploadedFile(fn,
+                                           str.encode(file_content))
+        tu = TemporaryUpload(upload_id=upload_id,
+                             file_id=file_id,
+                             file=uploaded_file, upload_name=fn,
+                             upload_type=TemporaryUpload.FILE_DATA)
+        tu.save()
+
+        # Now set up a stored version of this upload
+        su = StoredUpload(upload_id=upload_id,
+                          file=('%s' % (fn)),
+                          uploaded=tu.uploaded)
+        su.save()
+        su_target_dir = os.path.join(LoadTestCase.FILE_STORE_PATH,
+                                     os.path.dirname(su.file.name))
+        if not os.path.exists(su_target_dir):
+            os.mkdir(su_target_dir)
+        shutil.copy2(tu.get_file_path(), os.path.join(
+            LoadTestCase.FILE_STORE_PATH, su.file.name))
+
+        response = self.client.get((reverse('load') + '?id=%s' % fn))
+        self._check_file_response(response, fn, file_content)
 
     def test_load_ambiguous_id_file(self):
         su = StoredUpload.objects.get(upload_id=self.upload_id)
