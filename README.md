@@ -386,7 +386,14 @@ See full details of the particular changes merged in the [v0.5.0 release notes o
 
 ### License
 
-This repository is licensed under a BSD 3-Clause license. Please see the [LICENSE](LICENSE) file in the root of the repository.
+This repository is licensed under a BSD 3-Clause license. Please see the
+[LICENSE](LICENSE) file in the root of the repository.
+
+This project contains one function `content_disposition_header` (in
+`django_utils.py`) that is adapted from code in the Django project. The
+original code that this function is adapted from is Copyright (c) Django
+Software Foundation and individual contributors; All Rights Reserved;
+
 
 ### Acknowledgements
 

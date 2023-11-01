@@ -1,6 +1,9 @@
+# -*- coding: utf-8 -*-
+# The above line is present to support the use of raw unicode
 import logging
 import os
 import shutil
+import six
 import urllib
 # Switched to using Message rather than cgi.parse_header for parsing and
 # checking header params since cgi is deprecated and will be removed in py3.13
@@ -80,14 +83,22 @@ class LoadTestCase(TestCase):
             self.assertTrue(
                 fname[0].lower() == 'utf-8',
                 'Handling an encoded filename and expected UTF-8 encoding')
-            fname = urllib.parse.quote(fname[2], encoding='latin-1')
+            if six.PY2:
+                fname = urllib.quote(fname[2])
+            else:
+                fname = urllib.parse.quote(fname[2], encoding='latin-1')
+
             # Now UTF-8 decode to get the original filename for comparison!
-            fname = urllib.parse.unquote(fname, encoding='utf-8')
+            if six.PY2:
+                fname = urllib.unquote(fname)
+                fname = fname.decode('utf-8')
+            else:
+                fname = urllib.parse.unquote(fname, encoding='utf-8')
 
         self.assertEqual(filename, fname, ('Returned filename is not '
                          'equal to the provided filename value.'))
 
-        test_file_content = file_content if type(file_content) == str \
+        test_file_content = file_content if isinstance(file_content, str) \
             else file_content.decode()
         self.assertEqual(response.content.decode(), test_file_content,
                          'The response data is invalid.')
@@ -187,7 +198,7 @@ class LoadTestCase(TestCase):
         file_id = _get_file_id()
         file_content = ('This is some test file data for an uploaded file '
                         'with a filename that contains non-ASCII characters.')
-        fn = 'тест.txt'
+        fn = u'тест.txt'
         uploaded_file = SimpleUploadedFile(fn,
                                            str.encode(file_content))
         tu = TemporaryUpload(upload_id=upload_id,
