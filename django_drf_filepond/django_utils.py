@@ -1,17 +1,29 @@
 ###########################################################################
-# Django's content_disposition_header function, as included in Django 4.2
-# The function is being reproduced here with modifications to support it's 
-# use with earlier versions of Django. 
+# This code is based on Django's content_disposition_header function, as
+# included in Django 4.2
+#
+# The function is being reproduced here with modifications to support it's
+# use with earlier versions of Django.
 # The original code is available at:
 # https://docs.djangoproject.com/en/4.2/_modules/django/utils/http/#content_disposition_header
 # and via github in the django.utils.http module:
 # https://github.com/django/django/blob/main/django/utils/http.py#L357
-# The original code on which the function below is base is released under a
-# BSD-3-Clauselicence and is Copyright (c) Django Software Foundation and
-# individual contributors; All Rights Reserved; See Django LICENSE file at:
+#
+# The original code on which the function below is based is released under a
+# BSD-3-Clause licence and is
+#
+# Copyright (c) Django Software Foundation and individual contributors;
+# All Rights Reserved;
+#
+# See Django LICENSE file at:
 # https://github.com/django/django/blob/main/LICENSE
 ###########################################################################
-from urllib.parse import quote
+import six
+if six.PY2:
+    from urllib import quote
+else:
+    from urllib.parse import quote
+
 
 def content_disposition_header(as_attachment, filename):
     """
@@ -26,6 +38,8 @@ def content_disposition_header(as_attachment, filename):
                 filename.replace("\\", "\\\\").replace('"', r"\"")
             )
         except UnicodeEncodeError:
+            # Support for PY2.7 - urlencode unicode object
+            filename = filename.encode('utf-8')
             file_expr = "filename*=utf-8''{}".format(quote(filename))
         return ("%s; %s" % (disposition, file_expr))
     elif as_attachment:
