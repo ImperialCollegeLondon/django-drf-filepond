@@ -49,9 +49,19 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Set up Python ${{ matrix.python-version }}
+      if: matrix.python-version != '2.7'
       uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
+    - name: Install and set up Python 2.7 (Custom install)
+      if: matrix.python-version == '2.7'
+      run: |
+        # Install Python and wget, ensure Python2.7 is available as "python"
+        sudo apt update
+        sudo apt install -y python2.7 python-is-python2 wget
+        # Get and install pip
+        wget https://bootstrap.pypa.io/pip/2.7/get-pip.py
+        sudo python get-pip.py
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
