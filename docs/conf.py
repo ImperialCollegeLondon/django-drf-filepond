@@ -20,13 +20,13 @@
 # -- Project information -----------------------------------------------------
 
 project = 'django-drf-filepond'
-copyright = '2019, Jeremy Cohen, Imperial College London'
-author = 'Jeremy Cohen'
+copyright = '2019-2024, Jeremy Cohen, Imperial College London and contributors'
+author = 'Jeremy Cohen and contributors'
 
 # The short X.Y version
-version = ''
+version = '0.5.1'
 # The full version, including alpha/beta/rc tags
-release = ''
+release = '0.5.1'
 
 
 # -- General configuration ---------------------------------------------------
