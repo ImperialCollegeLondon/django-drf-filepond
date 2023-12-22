@@ -24,9 +24,9 @@ copyright = '2019-2024, Jeremy Cohen, Imperial College London and contributors'
 author = 'Jeremy Cohen and contributors'
 
 # The short X.Y version
-version = '0.6.0'
+version = '0.5.1'
 # The full version, including alpha/beta/rc tags
-release = '0.6.0'
+release = '0.5.1'
 
 
 # -- General configuration ---------------------------------------------------
