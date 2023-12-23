@@ -130,7 +130,7 @@ def _store_upload_local(destination_file_path, destination_file_name,
 
     # Is this necessary? Checking on every file storage in case the directory
     # was removed but not sure that this is really necessary.
-    if((not os.path.exists(file_path_base)) or
+    if ((not os.path.exists(file_path_base)) or
             (not os.path.isdir(file_path_base))):
         raise FileNotFoundError(
             'The local output directory [%s] defined by FILE_STORE_PATH is '
