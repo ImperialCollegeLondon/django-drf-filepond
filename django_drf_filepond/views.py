@@ -30,7 +30,7 @@ from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django_drf_filepond.uploaders import FilepondFileUploader
-from django_drf_filepond.utils import _get_file_id, _get_user,\
+from django_drf_filepond.utils import _get_file_id, _get_user, \
     get_local_settings_base_dir
 
 LOG = logging.getLogger(__name__)
