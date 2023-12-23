@@ -6,7 +6,7 @@ from rest_framework import status
 from rest_framework.exceptions import ParseError, MethodNotAllowed
 from rest_framework.response import Response
 
-from django_drf_filepond.models import TemporaryUpload, storage,\
+from django_drf_filepond.models import TemporaryUpload, storage, \
     TemporaryUploadChunked
 from io import BytesIO, StringIO
 from django_drf_filepond.utils import DrfFilepondChunkedUploadedFile, _get_user
@@ -61,7 +61,8 @@ class FilepondFileUploader(object):
             upload_field_name = request.data['fp_upload_field']
 
         if upload_field_name not in request.data:
-            raise ParseError('Could not find upload_field_name in request data.')
+            raise ParseError(
+                'Could not find upload_field_name in request data.')
 
         # The content of the upload field is a django.http.QueryDict.
         # The dict may have multiple values for a given field name.
