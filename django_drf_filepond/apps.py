@@ -3,6 +3,8 @@ from django.apps import AppConfig
 import importlib
 import os
 import logging
+import six
+import errno
 import django_drf_filepond.drf_filepond_settings as local_settings
 from django.core.exceptions import ImproperlyConfigured
 
@@ -39,7 +41,20 @@ class DjangoDrfFilepondConfig(AppConfig):
                         'upload directory <%s>' % local_settings.UPLOAD_TMP)
             # exist_ok=True has been added here to address an assumed race
             # condition when running multiple workers - see #104.
-            os.makedirs(local_settings.UPLOAD_TMP, mode=0o700, exist_ok=True)
+            # Since exist_ok isn't supported in Python2.7, a temporary
+            # addition has been put in place to address this, it will be
+            # removed when 2.7 support is dropped.
+            if six.PY2:
+                try:
+                    os.makedirs(local_settings.UPLOAD_TMP, mode=0o700)
+                except OSError as e:
+                    # If the error is not caused by the directory existing
+                    # then re-raise the original error.
+                    if e.errno != errno.EEXIST:
+                        raise
+            else:
+                os.makedirs(local_settings.UPLOAD_TMP, mode=0o700,
+                            exist_ok=True)
         else:
             LOG.debug('Filepond app init: Temporary file upload '
                       'directory already exists')
