@@ -180,8 +180,9 @@ def delete_temp_upload_file(sender, instance, **kwargs):
                 os.path.isfile(instance.file.path)):
             os.remove(instance.file.path)
 
-    LOG.debug('*** post_delete <%s> - Value of DELETE_UPLOAD_TMP_DIRS: %s'
-              % (instance.upload_id, str(local_settings.DELETE_UPLOAD_TMP_DIRS)))
+    LOG.debug(
+        '*** post_delete <%s> - Value of DELETE_UPLOAD_TMP_DIRS: %s'
+        % (instance.upload_id, str(local_settings.DELETE_UPLOAD_TMP_DIRS)))
     if local_settings.DELETE_UPLOAD_TMP_DIRS:
         file_dir = os.path.join(storage.location, instance.upload_id)
         if (os.path.exists(file_dir) and os.path.isdir(file_dir)):

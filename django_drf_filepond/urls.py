@@ -9,7 +9,7 @@ if six.PY2:
     from django.conf.urls import url
 else:
     from django.urls import re_path, path
-from django_drf_filepond.views import ProcessView, RevertView, LoadView,\
+from django_drf_filepond.views import ProcessView, RevertView, LoadView, \
      RestoreView, FetchView, PatchView
 
 #############################################################################
