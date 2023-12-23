@@ -37,6 +37,8 @@ class DjangoDrfFilepondConfig(AppConfig):
         if not os.path.exists(local_settings.UPLOAD_TMP):
             LOG.warning('Filepond app init: Creating temporary file '
                         'upload directory <%s>' % local_settings.UPLOAD_TMP)
+            # exist_ok=True has been added here to address an assumed race
+            # condition when running multiple workers - see #104.
             os.makedirs(local_settings.UPLOAD_TMP, mode=0o700, exist_ok=True)
         else:
             LOG.debug('Filepond app init: Temporary file upload '
