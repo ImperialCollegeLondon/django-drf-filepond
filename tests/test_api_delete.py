@@ -208,8 +208,11 @@ class ApiDeleteTestCase(TestCase):
         local_settings.STORAGES_BACKEND = None
         self.api.storage_backend_initialised = False
         with self.assertRaisesMessage(
-                ConfigurationError,
-                'The file upload settings are not configured correctly.'):
+                ImproperlyConfigured,
+                'The django-drf-filepond file storage API cannot be used '
+                'since configuration for either a local file storage '
+                'directory or a remote file storage service has not been '
+                'provided. Please see the documentation.'):
             self.delete_upload(self.upload_id, delete_file=True)
         local_settings.FILE_STORE_PATH = fsp
 
@@ -300,13 +303,17 @@ class ApiDeleteTestCase(TestCase):
         storages_bak = local_settings.STORAGES_BACKEND
         local_settings.FILE_STORE_PATH = None
         local_settings.STORAGES_BACKEND = None
-        with self.assertRaisesMessage(
-                ImproperlyConfigured,
-                'Expepected an error since neither a file store location or '
-                'storages backend are set.'):
-            self.delete_upload(self.upload_id)
-        local_settings.FILE_STORE_PATH = file_store_path_bak
-        local_settings.STORAGES_BACKEND = storages_bak
+        try:
+            with self.assertRaisesMessage(
+                    ImproperlyConfigured,
+                    'The django-drf-filepond file storage API cannot be used '
+                    'since configuration for either a local file storage '
+                    'directory or a remote file storage service has not been '
+                    'provided. Please see the documentation.'):
+                self.delete_upload(self.upload_id)
+        finally:
+            local_settings.FILE_STORE_PATH = file_store_path_bak
+            local_settings.STORAGES_BACKEND = storages_bak
 
     def tearDown(self):
         local_settings.STORAGES_BACKEND = self.storage_backend
