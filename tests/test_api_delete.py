@@ -19,21 +19,19 @@ delete_stored_upload:
 import logging
 import os
 
-from django.test import TestCase
-from django_drf_filepond.utils import _get_file_id
-from django_drf_filepond.models import StoredUpload
-
 import django_drf_filepond.drf_filepond_settings as local_settings
+from django.core.exceptions import ImproperlyConfigured
+from django.test import TestCase
 from django.utils import timezone
 from django_drf_filepond.exceptions import ConfigurationError
+from django_drf_filepond.models import StoredUpload
+from django_drf_filepond.utils import _get_file_id
 
 # Python 2/3 support
 try:
-    from unittest.mock import MagicMock
-    from unittest.mock import patch
+    from unittest.mock import MagicMock, patch
 except ImportError:
-    from mock import MagicMock
-    from mock import patch
+    from mock import MagicMock, patch
 
 # There's no built in FileNotFoundError, FileExistsError in Python 2
 try:
@@ -86,6 +84,10 @@ LOG = logging.getLogger(__name__)
 #
 # test_delete_stored_upload_local_remove_fails: Call delete_stored_upload
 #    with a valid upload_id but where the file is missing on the local file
+#
+# test_delete_stored_upload_without_config_set: Check that attempting to call
+#    delete_stored_upload without either a FILE_STORE_PATH or STORAGES_BACKEND
+#    set results in an IncorrectlyConfigured exception.
 #
 class ApiDeleteTestCase(TestCase):
 
@@ -206,8 +208,11 @@ class ApiDeleteTestCase(TestCase):
         local_settings.STORAGES_BACKEND = None
         self.api.storage_backend_initialised = False
         with self.assertRaisesMessage(
-                ConfigurationError,
-                'The file upload settings are not configured correctly.'):
+                ImproperlyConfigured,
+                'The django-drf-filepond file storage API cannot be used '
+                'since configuration for either a local file storage '
+                'directory or a remote file storage service has not been '
+                'provided. Please see the documentation.'):
             self.delete_upload(self.upload_id, delete_file=True)
         local_settings.FILE_STORE_PATH = fsp
 
@@ -287,6 +292,28 @@ class ApiDeleteTestCase(TestCase):
                                                   'Error deleting file'):
                         self.delete_upload(self.upload_id, delete_file=True)
                     os_patcher.assert_called_once_with(file_location)
+
+    def test_delete_stored_upload_without_config_set(self):
+        """
+        Check that attempting to call delete_stored_upload without either a
+        FILE_STORE_PATH or STORAGES_BACKEND set results in an
+        IncorrectlyConfigured exception.
+        """
+        file_store_path_bak = local_settings.FILE_STORE_PATH
+        storages_bak = local_settings.STORAGES_BACKEND
+        local_settings.FILE_STORE_PATH = None
+        local_settings.STORAGES_BACKEND = None
+        try:
+            with self.assertRaisesMessage(
+                    ImproperlyConfigured,
+                    'The django-drf-filepond file storage API cannot be used '
+                    'since configuration for either a local file storage '
+                    'directory or a remote file storage service has not been '
+                    'provided. Please see the documentation.'):
+                self.delete_upload(self.upload_id)
+        finally:
+            local_settings.FILE_STORE_PATH = file_store_path_bak
+            local_settings.STORAGES_BACKEND = storages_bak
 
     def tearDown(self):
         local_settings.STORAGES_BACKEND = self.storage_backend

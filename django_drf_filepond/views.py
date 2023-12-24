@@ -11,7 +11,7 @@ import re
 import requests
 import shortuuid
 import django_drf_filepond
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.core.validators import URLValidator
 from django.http.response import HttpResponse, HttpResponseNotFound, \
@@ -240,7 +240,7 @@ class LoadView(APIView):
         # su is now the StoredUpload record for the requested file
         try:
             (filename, data_bytes) = get_stored_upload_file_data(su)
-        except ConfigurationError as e:
+        except (ConfigurationError, ImproperlyConfigured) as e:
             LOG.error('Error getting file upload: [%s]' % str(e))
             return HttpResponseServerError('The file upload settings are '
                                            'not configured correctly.')

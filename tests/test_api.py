@@ -15,15 +15,13 @@ store_upload:
 import logging
 import os
 
-from django.test import TestCase
-from django_drf_filepond.api import store_upload
-from django_drf_filepond.utils import _get_file_id
-from django.core.files.uploadedfile import SimpleUploadedFile
-from django_drf_filepond.models import TemporaryUpload, StoredUpload
-
 import django_drf_filepond.drf_filepond_settings as local_settings
 from django.core.exceptions import ImproperlyConfigured
-from django_drf_filepond.api import _store_upload_local
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import TestCase
+from django_drf_filepond.api import _store_upload_local, store_upload
+from django_drf_filepond.models import StoredUpload, TemporaryUpload
+from django_drf_filepond.utils import _get_file_id
 
 # There's no built in FileNotFoundError, FileExistsError in Python 2
 try:
@@ -98,6 +96,10 @@ LOG = logging.getLogger(__name__)
 # test_store_upload_local_copy_to_store_fails: Call _store_upload_local and
 #    the copy to permanent storage fails - expect exception.
 #
+# test_store_upload_without_config_set: Check that attempting to call
+#    store_upload without either a FILE_STORE_PATH or STORAGES_BACKEND set
+#    results in an IncorrectlyConfigured exception.
+#
 class ApiTestCase(TestCase):
 
     def setUp(self):
@@ -129,8 +131,11 @@ class ApiTestCase(TestCase):
         fsp = local_settings.FILE_STORE_PATH
         local_settings.FILE_STORE_PATH = None
         with self.assertRaisesMessage(
-                ImproperlyConfigured, 'A required setting is missing in '
-                'your application configuration.'):
+                ImproperlyConfigured,
+                'The django-drf-filepond file storage API cannot be used '
+                'since configuration for either a local file storage '
+                'directory or a remote file storage service has not been '
+                'provided. Please see the documentation.'):
             store_upload('hsdfiuysh78sdhiu', '/test_storage/test_file.txt')
         local_settings.FILE_STORE_PATH = fsp
 
@@ -349,6 +354,28 @@ class ApiTestCase(TestCase):
                             'storage location'):
                         _store_upload_local('/test_storage', 'testfile.txt',
                                             tu)
+    
+    def test_store_upload_without_config_set(self):
+        """
+        Check that attempting to call store_upload without either a
+        FILE_STORE_PATH or STORAGES_BACKEND set results in an
+        IncorrectlyConfigured exception.
+        """
+        file_store_path_bak = local_settings.FILE_STORE_PATH
+        storages_bak = local_settings.STORAGES_BACKEND
+        local_settings.FILE_STORE_PATH = None
+        local_settings.STORAGES_BACKEND = None
+        try:
+            with self.assertRaisesMessage(
+                    ImproperlyConfigured,
+                    'The django-drf-filepond file storage API cannot be used '
+                    'since configuration for either a local file storage '
+                    'directory or a remote file storage service has not been '
+                    'provided. Please see the documentation.'):
+                store_upload(self.upload_id, self.test_target_dirname)
+        finally:
+            local_settings.FILE_STORE_PATH = file_store_path_bak
+            local_settings.STORAGES_BACKEND = storages_bak
 
     def tearDown(self):
         upload_tmp_base = getattr(local_settings, 'UPLOAD_TMP', None)

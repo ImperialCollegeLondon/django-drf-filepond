@@ -69,6 +69,8 @@ def store_upload(upload_id, destination_file_path):
     file. i.e. the file will be stored at
         destination_file_path + destination_file_name
     """
+    _check_file_store_config_provided()
+
     # TODO: If the storage backend is not initialised, init now - this will
     # be removed when this module is refactored into a class.
     if not storage_backend_initialised:
@@ -261,6 +263,8 @@ def get_stored_upload_file_data(stored_upload):
         filename is a string containing the name of the stored file
         data_bytes_io is a file-like BytesIO object containing the file data
     """
+    _check_file_store_config_provided()
+
     # TODO: If the storage backend is not initialised, init now - this
     # will be removed when this module is refactored into a class.
     if not storage_backend_initialised:
@@ -320,6 +324,8 @@ def delete_stored_upload(upload_id, delete_file=False):
     is made explicit that the stored file associated with the upload will be
     permanently deleted.
     """
+    _check_file_store_config_provided()
+
     try:
         su = get_stored_upload(upload_id)
     except StoredUpload.DoesNotExist as e:
@@ -386,3 +392,22 @@ def delete_stored_upload(upload_id, delete_file=False):
         # been created to store the file. For now, we just delete the file.
 
     return True
+
+# As noted in #97, there may be cases where permanent file storage of files
+# that have been uploaded from the filepond client is handled manually and
+# completely independently of django-drf-filepond. In these cases, the settings
+# related to file storage may not provided (DJANGO_DRF_FILEPONF_FILE_STORE_PATH
+# and DJANGO_DRF_FILEPOND_STORAGES_BACKEND). Note that this is independent of
+# the temporary uploads from the filepond client which are handled by
+# django-drf-filepond using a separate setting. Since the file storage options
+# are not required, the settings check at startup no longer throws an error
+# when they're not provided but we instead have to check for them here.
+def _check_file_store_config_provided():
+    file_store = getattr(local_settings, 'FILE_STORE_PATH', None)
+    storage_class = getattr(local_settings, 'STORAGES_BACKEND', None)
+    if (not file_store) and (not storage_class):
+        raise ImproperlyConfigured(
+            'The django-drf-filepond file storage API cannot be used since '
+            'configuration for either a local file storage directory or a '
+            'remote file storage service has not been provided. Please see '
+            'the documentation.')
