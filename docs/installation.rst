@@ -85,8 +85,10 @@ On the client side, you need to set the endpoints of the ``process``,
 ``revert``, ``fetch``, ``load`` and ``restore`` functions to match the 
 endpoint used in your path statement above. For example if the first 
 parameter to ``url`` is ``^fp/`` then the endpoint for the ``process`` 
-function will be ``/fp/process/``. For example, your client-side configuration
-may include configuration similar to the following::
+function will be ``/fp/process/``. 
+
+An example client-side configuration might include configuration similar to the
+following:: 
 
     FilePond.setOptions({
         ...
@@ -96,10 +98,18 @@ may include configuration similar to the following::
             patch: '/patch/',
             revert: '/revert/',
             fetch: '/fetch/?target=',
-            load: '/load/'
+            load: '/load/?id=',
+            restore: '/restore/?id='
         }
         ...
     });
+
+Note that the `load` and `restore` endpoints in django-drf-filepond expect the
+upload ID to be provided as an `id` query string parameter, hence the `?id=` at
+the end of the query strings shown in the above example. For the `fetch`
+endpoint, django-drf-filepond expects the target URL to be specified via a
+query string parameter named `target`, again, as per the above sample
+configuration.
 
 See the `filepond server configuration <https://pqina.nl/filepond/docs/patterns/api/server/>`_
 documentation for further examples.
