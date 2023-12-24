@@ -210,8 +210,6 @@ def get_stored_upload(upload_id):
     upload_id: This function takes a 22-character unique ID assigned to the
     original upload of the requested file.
     """
-    _check_file_store_config_provided()
-
     # If the parameter matched the upload ID format, we assume that it
     # must be an upload ID and proceed accordingly. If the lookup of the
     # record fails, then we have another go assuming a filename was
