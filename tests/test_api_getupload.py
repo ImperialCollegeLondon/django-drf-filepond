@@ -6,18 +6,17 @@ Testing of:
     get_stored_upload
     get_stored_upload_file_data
 '''
-from io import BytesIO
 import logging
 import os
-
-from django.test import TestCase
-from django.utils import timezone
-
-from django_drf_filepond.api import get_stored_upload, \
-    get_stored_upload_file_data
+from io import BytesIO
 
 import django_drf_filepond.api
 import django_drf_filepond.drf_filepond_settings as local_settings
+from django.core.exceptions import ImproperlyConfigured
+from django.test import TestCase
+from django.utils import timezone
+from django_drf_filepond.api import (get_stored_upload,
+                                     get_stored_upload_file_data)
 from django_drf_filepond.exceptions import ConfigurationError
 from django_drf_filepond.models import StoredUpload
 from django_drf_filepond.utils import _get_file_id
@@ -54,6 +53,14 @@ LOG = logging.getLogger(__name__)
 #
 # test_get_remote_upload_not_on_remote_store: Check that when requesting
 #    a file from a remote store that doesn't exist, we get a suitable error
+#
+# test_get_stored_upload_without_config_set: Check that attempting to call
+#    get_stored_upload without either a FILE_STORE_PATH or STORAGES_BACKEND set
+#    results in an IncorrectlyConfigured exception.
+#
+# test_get_stored_upload_file_data_without_config_set: Check that attempting to
+#    call get_stored_upload_file_data without either a FILE_STORE_PATH or
+#    STORAGES_BACKEND set results in an IncorrectlyConfigured exception.
 #
 class ApiGetUploadTestCase(TestCase):
 
@@ -178,6 +185,42 @@ class ApiGetUploadTestCase(TestCase):
         mock_storage_backend = django_drf_filepond.api.storage_backend
         return mock_storage_backend
 
+    def test_get_stored_upload_without_config_set(self):
+        """
+        Check that attempting to call get_stored_upload without either a
+        FILE_STORE_PATH or STORAGES_BACKEND set results in an
+        IncorrectlyConfigured exception.
+        """
+        file_store_path_bak = local_settings.FILE_STORE_PATH
+        storages_bak = local_settings.STORAGES_BACKEND
+        local_settings.FILE_STORE_PATH = None
+        local_settings.STORAGES_BACKEND = None
+        with self.assertRaisesMessage(
+                ImproperlyConfigured,
+                'Expepected an error since neither a file store location or '
+                'storages backend are set.'):
+            get_stored_upload(self.upload_id)
+        local_settings.FILE_STORE_PATH = file_store_path_bak
+        local_settings.STORAGES_BACKEND = storages_bak
+
+    def test_get_stored_upload_file_data_without_config_set(self):
+        """
+        Check that attempting to call get_stored_upload_file_data without
+        either a FILE_STORE_PATH or STORAGES_BACKEND set results in an
+        IncorrectlyConfigured exception.
+        """
+        file_store_path_bak = local_settings.FILE_STORE_PATH
+        storages_bak = local_settings.STORAGES_BACKEND
+        local_settings.FILE_STORE_PATH = None
+        local_settings.STORAGES_BACKEND = None
+        with self.assertRaisesMessage(
+                ImproperlyConfigured,
+                'Expepected an error since neither a file store location or '
+                'storages backend are set.'):
+            get_stored_upload_file_data(self.su)
+        local_settings.FILE_STORE_PATH = file_store_path_bak
+        local_settings.STORAGES_BACKEND = storages_bak
+    
     def tearDown(self):
         # Delete stored upload
         self.su.delete()
