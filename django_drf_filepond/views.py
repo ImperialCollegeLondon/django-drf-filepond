@@ -37,6 +37,13 @@ LOG = logging.getLogger(__name__)
 
 LOAD_RESTORE_PARAM_NAME = 'id'
 
+# Django's content_disposition_header function is only
+# available in Django 4.2+, a local version is available to
+# support older Django versions
+try:
+    from django.utils.http import content_disposition_header
+except ImportError:
+    from django_drf_filepond.django_utils import content_disposition_header
 
 # There's no built in FileNotFoundError in Python 2
 try:
@@ -252,8 +259,8 @@ class LoadView(APIView):
         ct = _get_content_type(filename)
 
         response = HttpResponse(data_bytes, content_type=ct)
-        response['Content-Disposition'] = ('inline; filename=%s' %
-                                           filename)
+        response['Content-Disposition'] = content_disposition_header(
+            False, filename)
 
         return response
 
@@ -296,8 +303,8 @@ class RestoreView(APIView):
         ct = _get_content_type(upload_file_name)
 
         response = HttpResponse(data, content_type=ct)
-        response['Content-Disposition'] = ('inline; filename=%s' %
-                                           upload_file_name)
+        response['Content-Disposition'] = content_disposition_header(
+            False, upload_file_name)
 
         return response
 
@@ -419,8 +426,8 @@ class FetchView(APIView):
         response['Content-Type'] = content_type
         response['Content-Length'] = file_size
         response['X-Content-Transfer-Id'] = upload_id
-        response['Content-Disposition'] = ('inline; filename=%s' %
-                                           upload_file_name)
+        response['Content-Disposition'] = content_disposition_header(
+            False, upload_file_name)
         return response
 
     def get(self, request):
@@ -432,6 +439,6 @@ class FetchView(APIView):
         else:
             raise ValueError('process_request result is of an unexpected type')
         response = HttpResponse(buf.getvalue(), content_type=content_type)
-        response['Content-Disposition'] = ('inline; filename=%s' %
-                                           upload_file_name)
+        response['Content-Disposition'] = content_disposition_header(
+            False, upload_file_name)
         return response
