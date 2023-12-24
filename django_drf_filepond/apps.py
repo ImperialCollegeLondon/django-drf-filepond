@@ -74,10 +74,17 @@ class DjangoDrfFilepondConfig(AppConfig):
                           'exists')
         else:
             if not storage_class:
-                LOG.error('You are using local file storage so you must set '
-                          'the base file storage path using %sFILE_STORE_PATH'
-                          % local_settings._app_prefix)
-                raise ImproperlyConfigured(
-                    'You are using local file storage so you must set the '
-                    'base file storage path using %sFILE_STORE_PATH'
-                    % local_settings._app_prefix)
+                # As highlighted in #97, it's possible that users of the
+                # library will want to handle permanent file storage manually.
+                # In this case, both FILE_STORE_PATH and STORAGES_BACKEND may
+                # remain unset. Rather than raising an error here, we now
+                # simply provide a warning and check for existence of one of
+                # the required configuration options when API calls are made.
+                LOG.warning(
+                    'You have not set either %sFILE_STORE_PATH or '
+                    '%sSTORAGES_BACKEND. It is assumed that you are handling '
+                    'permanent storage of files (after they are uploaded to '
+                    'django-drf-filepond from the filepond client) manually. '
+                    'If this is not the case, you need to set one of these '
+                    'settings.' %
+                    (local_settings._app_prefix, local_settings._app_prefix))
