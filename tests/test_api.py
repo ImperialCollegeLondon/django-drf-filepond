@@ -131,8 +131,11 @@ class ApiTestCase(TestCase):
         fsp = local_settings.FILE_STORE_PATH
         local_settings.FILE_STORE_PATH = None
         with self.assertRaisesMessage(
-                ImproperlyConfigured, 'A required setting is missing in '
-                'your application configuration.'):
+                ImproperlyConfigured,
+                'The django-drf-filepond file storage API cannot be used '
+                'since configuration for either a local file storage '
+                'directory or a remote file storage service has not been '
+                'provided. Please see the documentation.'):
             store_upload('hsdfiuysh78sdhiu', '/test_storage/test_file.txt')
         local_settings.FILE_STORE_PATH = fsp
 
@@ -362,13 +365,17 @@ class ApiTestCase(TestCase):
         storages_bak = local_settings.STORAGES_BACKEND
         local_settings.FILE_STORE_PATH = None
         local_settings.STORAGES_BACKEND = None
-        with self.assertRaisesMessage(
-                ImproperlyConfigured,
-                'Expepected an error since neither a file store location or '
-                'storages backend are set.'):
-            store_upload(self.upload_id, self.test_target_dirname)
-        local_settings.FILE_STORE_PATH = file_store_path_bak
-        local_settings.STORAGES_BACKEND = storages_bak
+        try:
+            with self.assertRaisesMessage(
+                    ImproperlyConfigured,
+                    'The django-drf-filepond file storage API cannot be used '
+                    'since configuration for either a local file storage '
+                    'directory or a remote file storage service has not been '
+                    'provided. Please see the documentation.'):
+                store_upload(self.upload_id, self.test_target_dirname)
+        finally:
+            local_settings.FILE_STORE_PATH = file_store_path_bak
+            local_settings.STORAGES_BACKEND = storages_bak
 
     def tearDown(self):
         upload_tmp_base = getattr(local_settings, 'UPLOAD_TMP', None)
