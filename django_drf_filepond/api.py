@@ -57,7 +57,7 @@ def _init_storage_backend():
 # either the 22-char upload_id or the value provided to the
 # destination_file_path parameter as a query string parameter using the
 # "id" key.
-def store_upload(upload_id, destination_file_path):
+def store_upload(upload_id, destination_file_path, rename_if_exists=False):
     """
     Store the temporary upload with the specified upload ID to the
     destination_file_path. destination_file_path should be a directory only
@@ -116,11 +116,32 @@ def store_upload(upload_id, destination_file_path):
     if storage_backend:
         return _store_upload_remote(destination_path, destination_name, tu)
     else:
-        return _store_upload_local(destination_path, destination_name, tu)
+        return _store_upload_local(destination_path, destination_name, tu,
+                                   rename_if_exists=rename_if_exists)
+
+
+def _get_available_target_file_path(target_dir, target_filename,
+                                    rename_if_exists=False):
+    target_file_path = os.path.join(target_dir, target_filename)
+    if not os.path.exists(target_file_path):
+        return target_file_path
+
+    if rename_if_exists:
+        idx = 2
+        while os.path.exists(target_file_path):
+            root, ext = os.path.splitext(target_filename)
+            target_file_path = f'{root} ({idx}).{ext}'
+            idx += 1
+        return target_file_path
+
+    LOG.error('File with specified name and path <%s> already exists'
+              % target_file_path)
+    raise FileExistsError('The specified temporary file cannot be stored'
+                          ' to the specified location - file exists.')
 
 
 def _store_upload_local(destination_file_path, destination_file_name,
-                        temp_upload):
+                        temp_upload, rename_if_exists=False):
     file_path_base = local_settings.FILE_STORE_PATH
 
     # If called via store_upload, this has already been checked but in
@@ -130,7 +151,7 @@ def _store_upload_local(destination_file_path, destination_file_name,
 
     # Is this necessary? Checking on every file storage in case the directory
     # was removed but not sure that this is really necessary.
-    if((not os.path.exists(file_path_base)) or
+    if ((not os.path.exists(file_path_base)) or
             (not os.path.isdir(file_path_base))):
         raise FileNotFoundError(
             'The local output directory [%s] defined by FILE_STORE_PATH is '
@@ -148,13 +169,8 @@ def _store_upload_local(destination_file_path, destination_file_name,
     destination_file_path = os.path.join(destination_file_path,
                                          target_filename)
 
-    # Check we're not about to overwrite anything
-    target_file_path = os.path.join(target_dir, target_filename)
-    if os.path.exists(target_file_path):
-        LOG.error('File with specified name and path <%s> already exists'
-                  % target_file_path)
-        raise FileExistsError('The specified temporary file cannot be stored'
-                              ' to the specified location - file exists.')
+    target_file_path = _get_available_target_file_path(
+        target_dir, target_filename, rename_if_exists=rename_if_exists)
 
     su = StoredUpload(upload_id=temp_upload.upload_id,
                       file=destination_file_path,
