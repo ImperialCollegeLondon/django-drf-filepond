@@ -99,7 +99,7 @@ jobs:
     - name: Upload coverage data
       uses: actions/upload-artifact@v4
       with:
-        name: coverage-data
+        name: coverage-data-${{ matrix.python-version }}
         path: .coverage.*
         include-hidden-files: true
         retention-days: 1
@@ -127,9 +127,10 @@ jobs:
           python -m pip install tox
       
       - name: "Download coverage data"
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
-          name: coverage-data
+          pattern: coverage-data-*
+          merge-multiple: true
       
       - name: "Combine coverage data and show report"
         run: |
