@@ -20,7 +20,7 @@
 # -- Project information -----------------------------------------------------
 
 project = 'django-drf-filepond'
-copyright = '2019-2024, Jeremy Cohen, Imperial College London and contributors'
+copyright = '2019-2025, Jeremy Cohen, Imperial College London and contributors'
 author = 'Jeremy Cohen and contributors'
 
 # The short X.Y version
