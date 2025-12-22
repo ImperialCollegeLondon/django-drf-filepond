@@ -23,7 +23,9 @@ setup(
     install_requires=[
         "Django>=1.11.29,<2.0.0;python_version=='2.7'",
         "Django>=2.2.25,<3.0.0;python_version=='3.5'",
-        "Django>=2.2.25;python_version>='3.6'",
+        "Django>=3.2.25,<4.0.0;python_version>='3.6' and python_version<='3.7'",
+        "Django>=4.2.26,<5.0.0;python_version>='3.8' and python_version<='3.9'",
+        "Django>=5.2.8;python_version>='3.10'",
         "djangorestframework==3.9.4;python_version=='2.7'",
         "djangorestframework>=3.11.2;python_version>='3.5'",
         "shortuuid==0.5.0;python_version=='2.7'",
