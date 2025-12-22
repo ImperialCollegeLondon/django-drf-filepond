@@ -28,7 +28,7 @@ setup(
         "Django>=5.2.8;python_version>='3.10'",
         "djangorestframework==3.9.4;python_version=='2.7'",
         "djangorestframework>=3.12.4;python_version>='3.5'",
-        "djangorestframework==3.14.0;python_version=>'3.6' and python_version<='3.7'",
+        "djangorestframework==3.14.0;python_version>='3.6' and python_version<='3.7'",
         "djangorestframework>=3.15.2;python_version>='3.8'",
         "shortuuid==0.5.0;python_version=='2.7'",
         "shortuuid>=0.5.0;python_version>='3.5'",
