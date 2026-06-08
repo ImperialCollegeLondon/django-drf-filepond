@@ -6,6 +6,7 @@ from email.message import Message
 
 import httpretty
 import requests
+from django.core.exceptions import ValidationError
 from django.test.testcases import TestCase
 from django.urls import reverse
 from django_drf_filepond import drf_filepond_settings
@@ -110,6 +111,23 @@ LOG = logging.getLogger(__name__)
 #    data, the response should be passed through without any issue. When
 #    requesting binary data such as a JPEG image file, this was causing an
 #    issue as described in #23. This test checks binary data is handled OK.
+#
+# test_fetch_oversize_file: When fetch receives a GET request for a very
+#    large file, this can be used to exhaust the system memory when buffering
+#    the downloaded data. As described in #125, attempts to buffer incoming
+#    data larger than a size specified by the application administator (via
+#    DJANGO_DRF_FILEPOND_MAX_FETCH_BYTES) should be blocked. Test that
+#    attempting to retrieve a file > DJANGO_DRF_FILEPOND_MAX_FETCH_BYTES is
+#    blocked and results in an exception.
+#
+# test_fetch_oversize_file_with_content_length: As per the above test, except
+#    that a Content-Length is set that is greater than the allowed number of
+#    bytes. To confirm this is being correctly read, the generated data itself
+#    is actually within the allowed number of bytes.
+#
+# test_fetch_oversize_file_invalid_content_length: As above but for this test
+#    we set the Content-Length to a valid amount while the data is actually
+#    greater in length than the allowed amount.
 #
 class FetchTestCase(TestCase):
 
@@ -260,7 +278,7 @@ class FetchTestCase(TestCase):
         self.assertTrue('Content-Disposition' in response,
                         ('Response does not contain a required '
                          'Content-Disposition header.'))
-        
+
         msg = Message()
         msg['content-type'] = response['Content-Disposition']
         self.assertTrue(
@@ -351,7 +369,7 @@ class FetchTestCase(TestCase):
             ('Parsed Content-Disposition header doesn\'t contain '
              'filename parameter'))
         fname = msg.get_param('filename')
-        
+
         self.assertEqual(
             len(fname), 22,
             'Returned filename is not a 22 character auto-generated name.')
@@ -402,7 +420,7 @@ class FetchTestCase(TestCase):
         mock_req.query_params = {'target': 'http://localhost/test'}
         fv = FetchView()
         result = fv._process_request(mock_req)
-        self.assertTrue((type(result) == tuple) and (len(result) == 4),
+        self.assertTrue((type(result) is tuple) and (len(result) == 4),
                         'The return type was not a tuple of the right length!')
         self.assertTrue(
             result[2] == 'cd_test_file.txt',
@@ -497,3 +515,118 @@ class FetchTestCase(TestCase):
                                     ('?target=%s' % test_url)))
         self.assertEqual(response.status_code, 200,
                          'Expected a 200 response code.')
+
+    @httpretty.activate
+    def test_fetch_oversize_file(self):
+        import os
+        file_data = os.urandom(1024 * 1024 * 12)  # 12MB - limit set to 10MB
+        file_data_list = list(file_data)
+        file_data_chunks = []
+        count = 0
+        while count < len(file_data_list):
+            file_data_chunks.append(bytes(file_data_list[count:count+65536]))
+            count += 65536
+
+        test_url = 'http://localhost/testfile.bin'
+
+        patcher_head = patch('requests.head')
+        patcher_get = patch('requests.get')
+        patcher_head.start()
+        patcher_get.start()
+        self.addCleanup(patcher_head.stop)
+        self.addCleanup(patcher_get.stop)
+        requests.get.return_value.__enter__.return_value.headers = {
+            'Content-Disposition': 'filename=testfile.bin'
+        }
+        (requests.get.return_value.__enter__.return_value.
+            iter_content.return_value) = file_data_chunks
+        mock_head_resp = MagicMock()
+        mock_head_resp.headers = {'Content-Type': 'application/octet-stream'}
+        mock_head_resp.status_code = 200
+        requests.head.return_value = mock_head_resp
+        mock_req = MagicMock()
+        mock_req.query_params = {'target': 'http://localhost/testfile.bin'}
+
+        with self.assertRaisesMessage(
+                ValidationError,
+                'Data at fetch URL exceeds the maximum fetch file size.'):
+            self.client.get((reverse('fetch') +
+                            ('?target=%s' % test_url)))
+
+    @httpretty.activate
+    def test_fetch_oversize_file_with_content_length(self):
+        import os
+        content_length_bytes = 1024 * 1024 * 12  # 12MB - limit set to 10MB
+        file_data = os.urandom(1024 * 1024 * 2)  # 2MB
+        file_data_list = list(file_data)
+        file_data_chunks = []
+        count = 0
+        while count < len(file_data_list):
+            file_data_chunks.append(bytes(file_data_list[count:count+65536]))
+            count += 65536
+
+        test_url = 'http://localhost/testfile.bin'
+
+        patcher_head = patch('requests.head')
+        patcher_get = patch('requests.get')
+        patcher_head.start()
+        patcher_get.start()
+        self.addCleanup(patcher_head.stop)
+        self.addCleanup(patcher_get.stop)
+        requests.get.return_value.__enter__.return_value.headers = {
+            'Content-Disposition': 'filename=testfile.bin',
+            'Content-Length': str(content_length_bytes)
+        }
+        (requests.get.return_value.__enter__.return_value.
+            iter_content.return_value) = file_data_chunks
+        mock_head_resp = MagicMock()
+        mock_head_resp.headers = {'Content-Type': 'application/octet-stream'}
+        mock_head_resp.status_code = 200
+        requests.head.return_value = mock_head_resp
+        mock_req = MagicMock()
+        mock_req.query_params = {'target': 'http://localhost/testfile.bin'}
+
+        with self.assertRaisesMessage(
+                ValidationError,
+                'Data at fetch URL exceeds the maximum fetch file size.'):
+            self.client.get((reverse('fetch') +
+                            ('?target=%s' % test_url)))
+
+    @httpretty.activate
+    def test_fetch_oversize_file_invalid_content_length(self):
+        import os
+        content_length_bytes = 1024 * 1024 * 2  # 2MB
+        file_data = os.urandom(1024 * 1024 * 12)  # 12MB - limit set to 10MB
+        file_data_list = list(file_data)
+        file_data_chunks = []
+        count = 0
+        while count < len(file_data_list):
+            file_data_chunks.append(bytes(file_data_list[count:count+65536]))
+            count += 65536
+
+        test_url = 'http://localhost/testfile.bin'
+
+        patcher_head = patch('requests.head')
+        patcher_get = patch('requests.get')
+        patcher_head.start()
+        patcher_get.start()
+        self.addCleanup(patcher_head.stop)
+        self.addCleanup(patcher_get.stop)
+        requests.get.return_value.__enter__.return_value.headers = {
+            'Content-Disposition': 'filename=testfile.bin',
+            'Content-Length': str(content_length_bytes)
+        }
+        (requests.get.return_value.__enter__.return_value.
+            iter_content.return_value) = file_data_chunks
+        mock_head_resp = MagicMock()
+        mock_head_resp.headers = {'Content-Type': 'application/octet-stream'}
+        mock_head_resp.status_code = 200
+        requests.head.return_value = mock_head_resp
+        mock_req = MagicMock()
+        mock_req.query_params = {'target': 'http://localhost/testfile.bin'}
+
+        with self.assertRaisesMessage(
+                ValidationError,
+                'Data at fetch URL exceeds the maximum fetch file size.'):
+            self.client.get((reverse('fetch') +
+                            ('?target=%s' % test_url)))

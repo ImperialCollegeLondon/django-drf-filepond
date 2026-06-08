@@ -14,6 +14,8 @@ except ImportError:
     from mock import patch
 
 LOG = logging.getLogger(__name__)
+
+
 #
 # Tests for checking the correct handling of incoming PATCH requests for
 # individual file chunks of a chunked upload.
@@ -31,13 +33,17 @@ LOG = logging.getLogger(__name__)
 # test_head_request_valid: Test that a valid HEAD request results in a call
 #    to _handle_chunk_restart.
 #
+# test_patch_valid_request_with_parser: Test that a valid PATCH request
+#    results in a successful completion of processing via the custom parser.
+#    Unlike test_patch_valid_request which mocks out the chunk uploader, this
+#    test includes more of the pipeline code, including the parser. (this
+#    test is still to implement)
+#
 # test_head_invalid_id: Test that an error is generated if we make a HEAD
 #    request to continue an upload with an invalid ID. In this case invalid
 #    means that the ID conforms to the 22-character spec but it is unknown.
 #
-
-
-class ProcessTestCase(TestCase):
+class PatchTestCase(TestCase):
 
     def setUp(self):
         pass
@@ -64,6 +70,9 @@ class ProcessTestCase(TestCase):
             content_type='application/offset+octet-stream')
         self.assertContains(response, chunk_id, status_code=200)
 
+    # def test_patch_valid_request_with_parser(self):
+    #     pass
+
     @patch('django_drf_filepond.uploaders.FilepondChunkedFileUploader.'
            '_handle_chunk_restart')
     def test_head_request_valid(self, mock_hcr):
@@ -87,3 +96,4 @@ class ProcessTestCase(TestCase):
         response = self.client.head(req_url)
         self.assertEqual(response.data, 'Invalid upload ID specified.')
         self.assertEqual(response.status_code, 404)
+
