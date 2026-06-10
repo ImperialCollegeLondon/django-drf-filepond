@@ -1,4 +1,5 @@
 import os
+import sys
 from io import BytesIO
 
 from rest_framework.exceptions import ParseError
@@ -55,6 +56,9 @@ class ParsersTestCase(TestCase):
     def setUp(self):
         # Create a requestfactory that we can use for testing.
         self.rf = RequestFactory()
+        self.PY_LTEQUAL_37 = (
+            (sys.version_info.major == 2) or
+            (sys.version_info.major == 3 and sys.version_info.major <= 7))
 
     def test_upload_chunk_parser(self):
         '''The upload chunk parser is used for DRF to handle incoming
@@ -64,9 +68,16 @@ class ParsersTestCase(TestCase):
 
         # Create a request that we need for testing when the parser checks
         # request content.
-        req = self.rf.patch(
-            '/patch/ababab',
-            headers={'Upload-Length': '1048576', 'Upload-Offset': '0'})
+        if self.PY_LTEQUAL_37:
+            # To work around issues setting headers in the older version of the
+            # Django test RequestFactory...
+            req = self.rf.delete('/patch/ababab')
+            req.META.update({'HTTP_UPLOAD_LENGTH': '1048576',
+                             'HTTP_UPLOAD_OFFSET': '0'})
+        else:
+            req = self.rf.patch(
+                '/patch/ababab',
+                headers={'Upload-Length': '1048576', 'Upload-Offset': '0'})
         rq = {'request': req}
 
         parser = UploadChunkParser()
@@ -87,10 +98,18 @@ class ParsersTestCase(TestCase):
         Check that a chunk upload request with a content length larger
         than the permitted size results in an exception.
         '''
-        req = self.rf.patch(
-            '/patch/ababab',
-            headers={'Upload-Length': '1000000', 'Upload-Offset': '0',
-                     'Content-Length': '5000001'})
+        if self.PY_LTEQUAL_37:
+            # To work around issues setting headers in the older version of the
+            # Django test RequestFactory...
+            req = self.rf.delete('/patch/ababab')
+            req.META.update({'HTTP_UPLOAD_LENGTH': '1048576',
+                             'HTTP_UPLOAD_OFFSET': '0',
+                             'CONTENT_LENGTH':'5000001'})
+        else:
+            req = self.rf.patch(
+                '/patch/ababab',
+                headers={'Upload-Length': '1000000', 'Upload-Offset': '0',
+                        'Content-Length': '5000001'})
         rq = {'request': req}
 
         parser = UploadChunkParser()
@@ -107,9 +126,16 @@ class ParsersTestCase(TestCase):
         Check that a chunk upload request with a valid content length but
         data that is larger than the permitted size results in an exception.
         '''
-        req = self.rf.patch(
-            '/patch/ababab',
-            headers={'Upload-Length': '1048576', 'Upload-Offset': '0'})
+        if self.PY_LTEQUAL_37:
+            # To work around issues setting headers in the older version of the
+            # Django test RequestFactory...
+            req = self.rf.patch('/patch/ababab')
+            req.META.update({'HTTP_UPLOAD_LENGTH': '1048576',
+                             'HTTP_UPLOAD_OFFSET': '0'})
+        else:
+            req = self.rf.patch(
+                '/patch/ababab',
+                headers={'Upload-Length': '1048576', 'Upload-Offset': '0'})
         rq = {'request': req}
 
         parser = UploadChunkParser()
@@ -126,12 +152,20 @@ class ParsersTestCase(TestCase):
         Check that a chunk upload request with missing Upload-Length or
         Upload-Offset headers results in an exception.
         '''
-        req1 = self.rf.patch(
-            '/patch/ababab',
-            headers={'Upload-Offset': '0'})
-        req2 = self.rf.patch(
-            '/patch/ababab',
-            headers={'Upload-Length': '1048576'})
+        if self.PY_LTEQUAL_37:
+            # To work around issues setting headers in the older version of the
+            # Django test RequestFactory...
+            req1 = self.rf.patch('/patch/ababab')
+            req2 = self.rf.patch('/patch/ababab')
+            req1.META.update({'HTTP_UPLOAD_OFFSET': '0'})
+            req2.META.update({'HTTP_UPLOAD_LENGTH': '1048576'})
+        else:
+            req1 = self.rf.patch(
+                '/patch/ababab',
+                headers={'Upload-Offset': '0'})
+            req2 = self.rf.patch(
+                '/patch/ababab',
+                headers={'Upload-Length': '1048576'})
 
         parser = UploadChunkParser()
         randbytes = os.urandom(512)
@@ -158,9 +192,17 @@ class ParsersTestCase(TestCase):
         Check that a chunk upload request results in an exception where the
         chunk offset bytes header value is larger than Upload-Length value.
         '''
-        req = self.rf.patch(
-            '/patch/ababab',
-            headers={'Upload-Length': '1048576', 'Upload-Offset': '1048577'})
+        if self.PY_LTEQUAL_37:
+            # To work around issues setting headers in the older version of the
+            # Django test RequestFactory...
+            req = self.rf.patch(
+            '/patch/ababab')
+            req.META.update({'HTTP_UPLOAD_LENGTH': '1048576',
+                             'HTTP_UPLOAD_OFFSET': '1048577'})
+        else:
+            req = self.rf.patch(
+                '/patch/ababab',
+                headers={'Upload-Length': '1048576', 'Upload-Offset': '1048577'})
         rq = {'request': req}
 
         parser = UploadChunkParser()
@@ -175,9 +217,15 @@ class ParsersTestCase(TestCase):
     def test_plain_text_parser(self):
         # Create a request that we need for testing when the parser checks
         # request content.
-        req = self.rf.delete(
-            '/patch/ababab',
-            headers={'Content-Length': '256'})
+        if self.PY_LTEQUAL_37:
+            # To work around issues setting CONTENT_LENGTH manually, generate data
+            # of the required length so that the content length is set correctly
+            req = self.rf.delete(
+                '/patch/ababab', data=os.urandom(256))
+        else:
+            req = self.rf.delete(
+                '/patch/ababab',
+                headers={'Content-Length': '256'})
         rq = {'request': req}
 
         parser = PlainTextParser()
@@ -198,9 +246,16 @@ class ParsersTestCase(TestCase):
         Test the plain text parser raises an exception when the content
         length of the request exceeds the maximum allowed content length.
         '''
-        req = self.rf.delete(
-            '/patch/ababab',
-            headers={'Content-Length': '1024'})
+        if self.PY_LTEQUAL_37:
+            # To work around issues setting CONTENT_LENGTH manually, generate data
+            # of the required length so that the content length is set correctly
+            req = self.rf.delete(
+                '/patch/ababab', data=os.urandom(1024))
+        else:
+            req = self.rf.delete(
+                '/patch/ababab',
+                headers={'Content-Length': '1024'})
+        
         rq = {'request': req}
 
         parser = PlainTextParser()
@@ -218,9 +273,15 @@ class ParsersTestCase(TestCase):
         length of the request is OK but this is incorrect and data exceeds
         the maximum allowed size.
         '''
-        req = self.rf.delete(
-            '/patch/ababab',
-            headers={'Content-Length': '5'})
+        if self.PY_LTEQUAL_37:
+            # To work around issues setting CONTENT_LENGTH manually, generate data
+            # of the required length so that the content length is set correctly
+            req = self.rf.delete(
+                '/patch/ababab', data=os.urandom(5))
+        else:
+            req = self.rf.delete(
+                '/patch/ababab',
+                headers={'Content-Length': '5'})
         rq = {'request': req}
 
         parser = PlainTextParser()
