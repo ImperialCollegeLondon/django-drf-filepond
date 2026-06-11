@@ -98,3 +98,27 @@ PERMISSION_CLASSES = getattr(settings, _app_prefix+'PERMISSION_CLASSES', {})
 TEMPFILE_READ_CHUNK_SIZE = getattr(settings,
                                    _app_prefix+'TEMPFILE_READ_CHUNK_SIZE',
                                    1048576)
+
+# When chunks are sent from the filepond client using a PATCH request,
+# they are stored in memory. To ensure that very large chunks cannot
+# be sent that may, for example, exhaust available system memory, the
+# chunk size is checked within the relevant django-drf-filepond parser.
+# This parameter sets the maximum size of a chunk that can be uploaded.
+# By default, this value is 5000000 bytes, matching the default chunkSize
+# set on the filepond client (see https://pqina.nl/filepond/docs/api/instance/properties/#server).
+# Note that Django's DATA_UPLOAD_MAX_MEMORY_SIZE parameter defaults to
+# 2.5MB so depending on how your application / Django settings are
+# configured, this parameter may generate a RequestDataTooBig exception
+# before the default MAX_CHUNK_DATA_SIZE is reached.
+MAX_CHUNK_DATA_SIZE = getattr(settings,
+                              _app_prefix+'MAX_CHUNK_DATA_SIZE',
+                              5000000)
+
+# Set the maximum number of bytes of a file that can be requested via
+# the fetch funcitonality - this is where a URL is dropped onto the filepond
+# client and the server then pulls in the file from the requested remote URL
+# and stores this as though it were uploaded by the client. This is set to
+# 100MB by default
+MAX_FETCH_BYTES = getattr(settings,
+                          _app_prefix+'MAX_FETCH_BYTES',
+                          1024 * 1024 * 100)  # 100MB

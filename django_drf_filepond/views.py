@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 import importlib
 import logging
 import mimetypes
+import tempfile
 
 import django_drf_filepond.drf_filepond_settings as local_settings
 import os
@@ -22,7 +23,6 @@ from django_drf_filepond.exceptions import ConfigurationError
 from django_drf_filepond.models import TemporaryUpload, storage, StoredUpload
 from django_drf_filepond.parsers import PlainTextParser, UploadChunkParser
 from django_drf_filepond.renderers import PlainTextRenderer
-from io import BytesIO
 from requests.exceptions import ConnectionError
 from rest_framework import status
 from rest_framework.exceptions import ParseError, NotFound
@@ -339,7 +339,8 @@ class FetchView(APIView):
         # stream=True, the connection begins by being opened and only
         # fetching the headers. We could do this check then.
         try:
-            header = requests.head(target_url, allow_redirects=True)
+            header = requests.head(target_url, allow_redirects=True,
+                                   timeout=20)
         except ConnectionError as e:
             msg = ('Unable to access the requested remote file headers: %s'
                    % str(e))
@@ -359,18 +360,45 @@ class FetchView(APIView):
                       'Assuming this is not valid data file.')
             raise ParseError('Provided URL links to HTML content.')
 
-        buf = BytesIO()
         upload_file_name = None
         try:
-            with requests.get(target_url,
-                              allow_redirects=True, stream=True) as r:
+            # As set out in #125, we now enforce a cap on the maximum
+            # size of files requested via the fetch functionality. This
+            # maximum size can be controlled via the
+            # DJANGO_DRF_FILEPOND_MAX_FETCH_BYTES parameter.
+            # Rather than using a BytesIO buffer, incoming data is now
+            # handled via a spooled temporary file so it is stored to
+            # disk if the incoming data exceeds a given size.
+            with requests.get(target_url, allow_redirects=True,
+                              stream=True, timeout=20) as r:
+                # If Content-Length is provided and it exceeds MAX_FETCH_BYTES
+                # raise an exception straight away.
+                content_length = int(r.headers.get('Content-Length', 0))
+                if content_length > local_settings.MAX_FETCH_BYTES:
+                    raise ValidationError('Data at fetch URL exceeds the '
+                                          'maximum fetch file size.')
+
                 if 'Content-Disposition' in r.headers:
                     cd = r.headers['Content-Disposition']
                     matches = re.findall('filename=(.+)', cd)
                     if len(matches):
                         upload_file_name = matches[0]
+
+                # Spool to disk after incoming data exceeds 100MB
+                buf = tempfile.SpooledTemporaryFile(
+                    mode='wb', max_size=1024*1024*100)
+
+                # Track the number of bytes read so that we can catch
+                # cases where no Content-Length was provided but the
+                # data being retrieved exceeds the max allowed bytes.
+                bytes_read = 0
                 for chunk in r.iter_content(chunk_size=1048576):
+                    if bytes_read > local_settings.MAX_FETCH_BYTES:
+                        raise ValidationError('Data at fetch URL exceeds the '
+                                              'maximum fetch file size.')
+                    bytes_read += len(chunk)
                     buf.write(chunk)
+
         except ConnectionError as e:
             raise NotFound('Unable to access the requested remote file: %s'
                            % str(e))
@@ -397,7 +425,11 @@ class FetchView(APIView):
         else:
             raise ValueError('process_request result is of an unexpected type')
 
-        file_size = buf.seek(0, os.SEEK_END)
+        # Seek to the end of the file and use tell to get the file size.
+        # This previously used the return value from seek but this isn't
+        # supported in older Python releases.
+        buf.seek(0, os.SEEK_END)
+        file_size = buf.tell()
         buf.seek(0)
 
         # The addressing of filepond issue #154
@@ -431,7 +463,8 @@ class FetchView(APIView):
             return result
         else:
             raise ValueError('process_request result is of an unexpected type')
-        response = HttpResponse(buf.getvalue(), content_type=content_type)
+        buf.seek(0)
+        response = HttpResponse(buf.read(), content_type=content_type)
         response['Content-Disposition'] = ('inline; filename=%s' %
                                            upload_file_name)
         return response

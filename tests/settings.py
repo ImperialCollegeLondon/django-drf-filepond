@@ -136,6 +136,13 @@ URL_BASE = r'^fp/'
 
 DJANGO_DRF_FILEPOND_FILE_STORE_PATH = os.path.join(BASE_DIR_STR, 'filestore')
 
+# Set the maximum number of bytes of a file that can be requested via
+# the fetch funcitonality - this is where a URL is dropped onto the filepond
+# client and the server then pulls in the file from the requested remote URL
+# and stores this as though it were uploaded by the client. This is set to
+# 100MB by default but for testing purposes reducing this to 10MB here
+DJANGO_DRF_FILEPOND_MAX_FETCH_BYTES = 1024 * 1024 * 10
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
